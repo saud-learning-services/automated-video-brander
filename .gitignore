@@ -1,0 +1,11 @@
+.vscode
+
+# keep output folder but ignore contents
+output/*
+!output/.gitkeep
+
+input/tail/*
+!input/tail/.gitkeep
+
+input/tops/*
+!input/tops/.gitkeep
