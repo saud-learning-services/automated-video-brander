@@ -19,8 +19,6 @@ This repo will be publicly published when we have a stable **Version 1**
 - [x] Fix Watermark - edges 
 - [x] Add ability to specify Watermark location
 - [x] get it on GitHub and add everyone:
-    - [x] shoekey4811
-    - [x] unabridgedxcrpt
 - [ ] Make titles dynamic
     - [ ] Create blank slide on Premiere Pro (make sure Audio fades out completely)
     - [ ] Add text overlay and animation using moviepy
