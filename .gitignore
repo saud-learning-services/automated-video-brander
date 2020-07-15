@@ -7,5 +7,11 @@ output/*
 input/tail/*
 !input/tail/.gitkeep
 
-input/tops/*
-!input/tops/.gitkeep
+input/top/*
+!input/top/.gitkeep
+
+input/body/*
+!input/body/.gitkeep
+
+input/watermark/*
+!input/watermark/.gitkeep
