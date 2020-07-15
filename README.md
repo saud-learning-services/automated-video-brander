@@ -1,5 +1,8 @@
 # Top and Tail Stitcher
 
+🚨 PRIVATE REPO DO NOT SHARE 🚨
+This repo will be publicly published when we have a stable **Version 1**
+
 ## ⚠️ Important Use Case Information 
 * Editors will need to ensure that tops are created ~6s (working on automating this part as well)
 * Only works with **1920x1080 (MP4)**
@@ -18,14 +21,14 @@
 - [x] get it on GitHub and add everyone:
     - [x] shoekey4811
     - [x] unabridgedxcrpt
-- [] Make titles dynamic
-    - [] Create blank slide on Premiere Pro (make sure Audio fades out completely)
-    - [] Add text overlay and animation using moviepy
+- [ ] Make titles dynamic
+    - [ ] Create blank slide on Premiere Pro (make sure Audio fades out completely)
+    - [ ] Add text overlay and animation using moviepy
 
 ## Next Steps
-- [] Second script does the Panopto part of everything, first script just makes the video files
-- [] Integrate with Panopto to upload to sessions according to Altan and Jonathan's specifications
-- [] ERROR HANDLING
+- [ ] Second script does the Panopto part of everything, first script just makes the video files
+- [ ] Integrate with Panopto to upload to sessions according to Altan and Jonathan's specifications
+- [ ] ERROR HANDLING
 
 ## CSV
 Any of the following values will be treated as NULL on CSV:
