@@ -1,6 +1,5 @@
-Course,Top,Title,Body,Watermark,WatermarkPosition
-COMM 101,dean_swot_top.mp4,Dean Bob SWOT (with body),Helsley.mp4,UBC Sauder_1C_Rev.png,R
-COMM 101,dean_swot_top.mp4,Dean Bob SWOT (top & tail),,,
-COMM 101,elicia_intro_top.mp4,Elicia's Intro,,,
-BAFI 500,balance_sheet_basics_top.mp4,Balance Sheet Basics,,,
-BUSI 295,porters_generic_strategies.mp4,Porter's Generic Strategies,Elicia.mp4,UBC Sauder_1C_Rev.png,L
+Course,Top Slate,Title,Body,Watermark,Watermark Position
+COMM 101,sauder_slate.mp4,Dean Bob SWOT,Helsley.mp4,UBC Sauder_1C_Rev.png,R
+COMM 101,sauder_slate.mp4,Elicia's Intro,,,
+BAFI 500,sauder_slate.mp4,Balance Sheet Basics,,,
+BUSI 295,sauder_slate.mp4,Porter's Generic Strategies,Elicia.mp4,UBC Sauder_1C_Rev.png,L

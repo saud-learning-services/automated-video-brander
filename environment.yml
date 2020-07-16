@@ -2,5 +2,9 @@ name: top_and_tail_stitcher_env
 channels:
   - conda-forge
 dependencies:
+  - imagemagick
   - termcolor
   - moviepy
+  - pip
+  - pip:
+    - gizeh

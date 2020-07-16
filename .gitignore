@@ -1,4 +1,6 @@
 .vscode
+__pycache__/
+*.mp4
 
 # keep output folder but ignore contents
 output/*
@@ -7,8 +9,8 @@ output/*
 input/tail/*
 !input/tail/.gitkeep
 
-input/top/*
-!input/top/.gitkeep
+input/top_slates/*
+!input/top_slates/.gitkeep
 
 input/body/*
 !input/body/.gitkeep
