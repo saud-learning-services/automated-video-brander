@@ -12,21 +12,30 @@ This repo will be publicly published when we have a stable **Version 1**
 - [x] Fix Watermark - edges 
 - [x] Add ability to specify Watermark location
 - [x] get it on GitHub and add everyone:
-- [ ] Make titles dynamic
+- [x] Make titles dynamic
     - [x] Create blank slide on Premiere Pro (make sure Audio fades out completely)
     - [x] Add text overlay
     - [x] Get color right
     - [x] Get font right
     - [x] Animate title (using gizeh?)
-    - [ ] Fix slate (audio needs to fade more gradually)
     - [x] Implement new titles feature into rest of script
+- [x] Add 45 characters max title error handling
+- [ ] Refactor according to PEP8 & Pylint
+- [ ] Add support for different watermarks (like RHL)
+- [ ] "Processed" or "Completed" folder for **body** files
+    - [ ] Figure out if you want it to clear at the start of each run
+- [ ] Figure out small audio glitches
 
+
+## Errors and Testing
+- [x] Watermarks must end with .png
+- [x] Body's must end with .mp4
+ 
 ## Next Steps
 - [ ] Integrate with Panopto to upload to sessions according to Altan and Jonathan's specifications
 - [ ] Error Handling
     - [ ] Logs at the end of each run
 - [ ] See if we can use GPU for rendering
-- [ ] "Processed" or "Completed" folder for **body** files
 
 ## ⚠️ Important Use Case Information 
 * Editors will need to ensure that tops are created ~6s (working on automating this part as well)
@@ -35,16 +44,7 @@ This repo will be publicly published when we have a stable **Version 1**
 * Body should be a single video clip with ~3 seconds before/after the spaeker speaks
 * Watermark position defaults to bottom-right -- bottom left only if WatermarkPosition is **L** or **l** (in CSV)
 * Only supports single line titles (titles can not exceed 45 characters)
-
-## CSV
-Any of the following values will be treated as NULL on CSV:
-
-* empty cell
-* empty string: '' (FALSY)
-* zero: 0 (FALSY)
-* type = nan OR type = None
-* 'null' OR 'NULL'
-* 'none' OR 'NONE'
+* Titles cannot have '/' characters in them
 
 ## Whoever is runing should have a basic understanding of:
 

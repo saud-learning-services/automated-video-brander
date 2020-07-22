@@ -31,24 +31,3 @@ def create_top(title_text, slate):
     final_clip = CompositeVideoClip([slate, text_clip])
 
     return final_clip
-    # final_clip.write_videofile(f'output/title_test.mp4', temp_audiofile='temp-audio.m4a', codec='libx264', fps=29.97, remove_temp=True, audio_codec='aac')
-
-
-# TO SEE ALL POSSIBLE FONTS
-# font_list = TextClip.list('font')
-# print(font_list)
-
-# screensize = (1920,1080)
-
-# slate = VideoFileClip(f'input/sauder_top_slate.mp4')
-
-# text_clip = (
-#     TextClip(txt='Hello World!', font='WhitneyHTF-SemiBoldCondensed', color='#002145', fontsize=900)
-#     .resize(lambda t : 0.1 * (1+0.03*t))
-#     .set_duration(slate.duration)
-#     .set_pos('center')
-# )
-
-# final_clip = CompositeVideoClip([slate, text_clip])
-
-# final_clip.write_videofile(f'output/title_test.mp4', bitrate="15000k", temp_audiofile='temp-audio.m4a', codec='mpeg4', fps=29.97, remove_temp=True, audio_codec='aac')
