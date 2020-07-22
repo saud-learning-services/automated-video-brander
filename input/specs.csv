@@ -1,0 +1,9 @@
+Course,Top Slate,Title,Body,Watermark,Watermark Position
+COMM 101,sauder_slate.mp4,Dean Bob SWOT,Helsley.mp4,sauder-rhl-merged.png,R
+COMM 101,sauder_slate.mp4,Elicia's Intro,,,
+BAFI 500,sauder_slate.mp4,Balance Sheet Basics,,,
+BUSI 295,sauder_slate.mp4,Porter's Generic Strategies,Elicia.mp4,sauder-rhl-merged.png,L
+,sauder_slate.mp4,INVALID,,,R
+FIPR 200,sauder_slate.mp4,Intro to film studies,Helsley.mp4,ubc-sauder.png,
+BUSI 100,,Wrong,ERROR,,
+COMM 101,sauder_slate.mp4,This title is just waaay too long and should trigger the script to throw an Error,Elicia.mp4,ubc-sauder.png,L
