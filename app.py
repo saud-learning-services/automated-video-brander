@@ -1,11 +1,10 @@
 """
-TOP & TAIL STITCHER: stitch.py
+TOP & TAIL STITCHER: app.py
 
-authors:
-@markoprodanovic
+Author: @markoprodanovic
 
 last edit:
-Thursday, July 16, 2020
+Thursday, August 6, 2020
 """
 
 # Standard imports
@@ -16,8 +15,12 @@ import os
 # Moviepy (primary library)
 # Docs: https://zulko.github.io/moviepy/index.html
 from moviepy.editor import (
-    VideoFileClip, ImageClip, CompositeVideoClip, concatenate_videoclips)
+    VideoFileClip,
+    ImageClip,
+    CompositeVideoClip,
+    concatenate_videoclips)
 import moviepy.video.fx.all as vfx
+import moviepy.audio.fx.all as sfx
 
 # Additional dependencies
 from termcolor import cprint
@@ -25,7 +28,7 @@ import pandas as pd
 from pandas.errors import EmptyDataError, ParserError
 
 # Local modules
-from top_maker import create_top
+from src.top_maker import create_top
 
 
 def main():
@@ -56,15 +59,16 @@ def main():
         print(f'🎥 {course} | {title} | Row {index + 1}')
 
         try:
-            course, title, top_slate, body, watermark, wm_position = _get_video_attributes(
+            course, section, instructor, title, top_slate, body, watermark, wm_position = _get_video_attributes(
                 row)
         except ValueError:
             cprint('Skipping video...', 'red')
             continue
 
-        top = create_top(title, top_slate)
-        top_with_fade = top.fx(vfx.fadeout, duration=1.5,
-                               final_color=[255, 255, 255])
+        top = create_top(course, section, instructor, title, top_slate)
+        top = top.fx(vfx.fadeout, duration=1.5,
+                     final_color=[255, 255, 255])
+        top_with_fade = top.fx(sfx.audio_fadeout, duration=1)
 
         # same tail for all videos
         tail = VideoFileClip('input/tail/tail.mp4')
@@ -74,49 +78,58 @@ def main():
                         .fx(vfx.fadein, duration=1, initial_color=[255, 255, 255]))
             if (_has_value(watermark)):
 
-                # DEFAULT (bottom right)
-                left_margin = 1575
+                watermark_path = f'input/watermark/bottom-right/{watermark}'
 
-                # bottom left if specified
-                if (wm_position == 'L' or wm_position == 'l'):
-                    left_margin = 50
+                if wm_position in ['l', 'L']:
+                    watermark_path = f'input/watermark/bottom-left/{watermark}'
 
-                watermark = (ImageClip(f'input/watermark/{watermark}')
-                             .set_opacity(0.8)
-                             .set_duration(raw_body.duration)
-                             .resize(height=height)
-                             .margin(left=left_margin, top=975, opacity=0))
+                watermark_img = (ImageClip(watermark_path)
+                                 .set_duration(raw_body.duration))
 
-                body_wm = CompositeVideoClip([raw_body, watermark])
+                body_wm = CompositeVideoClip([raw_body, watermark_img])
                 body = body_wm.fx(vfx.fadeout, duration=1,
                                   final_color=[255, 255, 255])
+
+                body = body.fx(sfx.audio_fadeout, duration=1)
+
             else:
                 body = raw_body.fx(vfx.fadeout, duration=1,
                                    final_color=[255, 255, 255])
-            final_clip = concatenate_videoclips([top_with_fade, body, tail])
+            final_clip = concatenate_videoclips(
+                [top_with_fade, body, tail])
         else:
             final_clip = concatenate_videoclips([top_with_fade, tail])
 
         print(f'📁 Writing to output folder {course}...')
-        final_clip.write_videofile(f'output/{course}/{title}.mp4', temp_audiofile='temp-audio.m4a',
-                                   remove_temp=True, codec='libx264', audio_codec='aac')
+        final_clip.write_videofile(f'output/{course}/{title}.mp4',
+                                   temp_audiofile='temp-audio.m4a',
+                                   remove_temp=True,
+                                   codec='libx264',
+                                   audio_codec='aac')
 
-        # TODO: need to do some checking here
         cprint('\nSUCCESS', 'green')
-
-# ===== PRIVATE HELPERS ===== #
 
 
 def _get_video_attributes(row):
     """
     """
-    vals = [row['Course'], row['Title'], row['Top Slate'],
-            row['Body'], row['Watermark'], row['Watermark Position']]
 
-    # Course, Title, Top Slate must be included at minimum
-    if not all(map(_has_value, [row['Course'], row['Title'], row['Top Slate']])):
+    course = str(row['Course'])
+    section = str(row['Section'])
+    instructor = str(row['Instructor'])
+    title = str(row['Title'])
+    top_slate = str(row['Top Slate'])
+    body = str(row['Body'])
+    watermark = str(row['Watermark'])
+    wm_pos = str(row['Watermark Position'])
+
+    vals = [course, section, instructor, title,
+            top_slate, body, watermark, wm_pos]
+
+    # Course, Section, Instructor, Title, Top Slate must be included at minimum
+    if not all(map(_has_value, [course, section, instructor, title, top_slate])):
         cprint(
-            '\nERROR: Spec must have Course, Title and Top Slate value for each row',
+            '\nERROR: Spec must have Course, Section, Instructor, Title and Top Slate value for each row',
             'red')
         raise ValueError()
 
@@ -126,31 +139,33 @@ def _get_video_attributes(row):
         raise ValueError()
 
     # top slate must finish with mp4
-    if not _has_value(row['Top Slate']) or row['Top Slate'][-4:] != '.mp4':
+    if top_slate[-4:] != '.mp4':
         cprint('\nERROR: Must include value for slate that ends in .mp4', 'red')
         raise ValueError()
 
-    if len(row['Title']) > 45:
+    if len(title) > 45:
         cprint('\nERROR: Does not support titles with more than 45 characters', 'red')
         raise ValueError()
 
     # body must finish with .mp4 (if included)
-    if _has_value(row['Body']) and row['Body'][-4:] != '.mp4':
+    if _has_value(body) and body[-4:] != '.mp4':
         cprint('\nERROR: If body is included, csv value must end in .mp4', 'red')
         raise ValueError()
 
     # watermark must end in .png
-    if (_has_value(row['Watermark']) and row['Watermark'][-4:] != '.png'):
+    if (_has_value(watermark) and watermark[-4:] != '.png'):
         cprint('\nERROR: If watermark included, csv value must end in .png', 'red')
         raise ValueError()
 
     return (
-        row['Course'],
-        row['Title'],
-        row['Top Slate'],
-        row['Body'],
-        row['Watermark'],
-        row['Watermark Position']
+        course,
+        section,
+        instructor,
+        title,
+        top_slate,
+        body,
+        watermark,
+        wm_pos
     )
 
 
@@ -187,7 +202,7 @@ def _load_specifications(path):
     """TODO docstring
     """
     try:
-        specs = pd.read_csv(path + '/specs.csv')
+        specs = pd.read_csv(path + '/specs.csv', dtype={'Section': 'str'})
     except IOError as error:
         cprint('\nError loading CSV:', 'red')
         cprint(f'{error}\n', 'red', attrs=['dark'])
@@ -199,13 +214,13 @@ def _load_specifications(path):
         cprint('\nERROR: Ensure specs.csv has data.', 'red')
         sys.exit()
 
-    expected_cols = {'Course', 'Top Slate', 'Title',
+    expected_cols = {'Course', 'Section', 'Instructor', 'Title', 'Top Slate',
                      'Body', 'Watermark', 'Watermark Position'}
 
     actual_cols = set(list(specs))
 
     # Check that we have all the columns we expect
-    if (expected_cols != actual_cols):
+    if expected_cols != actual_cols:
         cprint('\nERROR: Missing or incorrect columns in specs.csv', 'red')
         cprint(f'Expected columns: {expected_cols}\n')
         sys.exit()
@@ -258,8 +273,6 @@ def _has_value(cell):
         return False
 
     return True
-
-# ===== CALL MAIN ===== #
 
 
 if __name__ == "__main__":

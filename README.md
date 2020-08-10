@@ -20,6 +20,7 @@ This repo will be publicly published when we have a stable **Version 1**
     - [x] Animate title (using gizeh?)
     - [x] Implement new titles feature into rest of script
 - [x] Add 45 characters max title error handling
+- [ ] Switch env to venv
 - [ ] Refactor according to PEP8 & Pylint
 - [ ] Add support for different watermarks (like RHL)
 - [ ] "Processed" or "Completed" folder for **body** files
