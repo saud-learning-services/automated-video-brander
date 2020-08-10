@@ -1,7 +1,7 @@
-from moviepy.editor import VideoFileClip, CompositeVideoClip
-import moviepy.video.fx.all as vfx
+from moviepy.editor import VideoClip, VideoFileClip, CompositeVideoClip
+from moviepy.video.fx.fadein import fadein
+from moviepy.video.fx.fadeout import fadeout
 import gizeh as gz
-from moviepy.video.VideoClip import VideoClip
 
 
 def _make_frame(t, course, section, instructor, title):
@@ -32,9 +32,9 @@ def create_top(course, section, instructor, title, slate):
                           :, :, :3], duration=slate.duration).set_mask(text_clip_mask)
     # text_clip = VideoClip(make_frame, duration=slate.duration)
 
-    text_clip = text_clip.fx(vfx.fadein, duration=1,
+    text_clip = text_clip.fx(fadein, duration=1,
                              initial_color=[255, 255, 255])
-    text_clip = text_clip.fx(vfx.fadeout, duration=1,
+    text_clip = text_clip.fx(fadeout, duration=1,
                              final_color=[255, 255, 255])
 
     final_clip = CompositeVideoClip([slate, text_clip])
