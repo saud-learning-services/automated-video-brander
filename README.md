@@ -6,6 +6,9 @@ _In development_
 ## TODO
 * Summary
 * Setup
+    * with venv and pip
+    * wich conda
+* How to use, project structure, etc
 
 ## Important Information 
 * Only supports **1920x1080**

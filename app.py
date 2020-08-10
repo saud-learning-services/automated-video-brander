@@ -1,10 +1,7 @@
 """
-TOP & TAIL STITCHER: app.py
+Sauder Automated Video Editor
 
-Author: @markoprodanovic
-
-last edit:
-Thursday, August 6, 2020
+Author: Marko Prodanovic
 """
 
 # Standard imports
@@ -19,8 +16,13 @@ from moviepy.editor import (
     ImageClip,
     CompositeVideoClip,
     concatenate_videoclips)
-import moviepy.video.fx.all as vfx
-import moviepy.audio.fx.all as sfx
+# import moviepy.video.fx.all as vfx
+# import moviepy.audio.fx.all as sfx
+
+from moviepy.video.fx.fadein import fadein
+from moviepy.video.fx.fadeout import fadeout
+from moviepy.audio.fx.audio_fadeout import audio_fadeout
+
 
 # Additional dependencies
 from termcolor import cprint
@@ -53,7 +55,8 @@ def main():
 
     for index, row in specs.iterrows():
 
-        print('\n====================================\n')
+        print(
+            '\n========================================================================\n')
         course = row['Course']
         title = row['Title']
         print(f'🎥 {course} | {title} | Row {index + 1}')
@@ -66,16 +69,16 @@ def main():
             continue
 
         top = create_top(course, section, instructor, title, top_slate)
-        top = top.fx(vfx.fadeout, duration=1.5,
+        top = top.fx(fadeout, duration=1.5,
                      final_color=[255, 255, 255])
-        top_with_fade = top.fx(sfx.audio_fadeout, duration=1)
+        top_with_fade = top.fx(audio_fadeout, duration=1)
 
         # same tail for all videos
         tail = VideoFileClip('input/tail/tail.mp4')
 
         if (_has_value(body)):
             raw_body = (VideoFileClip(f'input/body/{body}')
-                        .fx(vfx.fadein, duration=1, initial_color=[255, 255, 255]))
+                        .fx(fadein, duration=1, initial_color=[255, 255, 255]))
             if (_has_value(watermark)):
 
                 watermark_path = f'input/watermark/bottom-right/{watermark}'
@@ -87,13 +90,13 @@ def main():
                                  .set_duration(raw_body.duration))
 
                 body_wm = CompositeVideoClip([raw_body, watermark_img])
-                body = body_wm.fx(vfx.fadeout, duration=1,
+                body = body_wm.fx(fadeout, duration=1,
                                   final_color=[255, 255, 255])
 
-                body = body.fx(sfx.audio_fadeout, duration=1)
+                body = body.fx(audio_fadeout, duration=1)
 
             else:
-                body = raw_body.fx(vfx.fadeout, duration=1,
+                body = raw_body.fx(fadeout, duration=1,
                                    final_color=[255, 255, 255])
             final_clip = concatenate_videoclips(
                 [top_with_fade, body, tail])
@@ -101,13 +104,17 @@ def main():
             final_clip = concatenate_videoclips([top_with_fade, tail])
 
         print(f'📁 Writing to output folder {course}...')
-        final_clip.write_videofile(f'output/{course}/{title}.mp4',
-                                   temp_audiofile='temp-audio.m4a',
-                                   remove_temp=True,
-                                   codec='libx264',
-                                   audio_codec='aac')
-
-        cprint('\nSUCCESS', 'green')
+        try:
+            final_clip.write_videofile(f'output/{course}/{title}.mp4',
+                                       fps=29.97,
+                                       temp_audiofile='temp-audio.m4a',
+                                       remove_temp=True,
+                                       codec='libx264',
+                                       audio_codec='aac')
+            cprint('\nSUCCESS', 'green')
+        except Exception as error:
+            cprint(error, 'red')
+            raise
 
 
 def _get_video_attributes(row):
