@@ -16,3 +16,4 @@ _In development_
 * Body should be a single video clip with _approx. 3_ seconds before/after the spaeker speaks
 * Watermark position defaults to bottom-right -> bottom left only if Watermark Position is **l** (in CSV)
 * Only supports single line titles (titles can not exceed 45 characters)
+* If no "body" (actual instructional content) is specified, but top and tail are, they will get stitched together with a fade to white in between
