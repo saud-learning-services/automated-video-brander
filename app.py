@@ -112,6 +112,7 @@ def main():
         try:
             final_clip.write_videofile(final_video_path,
                                        fps=29.97,
+                                       threads=4,
                                        temp_audiofile='temp-audio.m4a',
                                        remove_temp=True,
                                        codec='libx264',
