@@ -19,3 +19,5 @@ input/watermark/*
 !input/watermark/.gitkeep
 
 Watermarks.psd
+
+ignore

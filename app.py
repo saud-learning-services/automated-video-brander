@@ -110,9 +110,17 @@ def main():
             final_video_path = f'output/other/{title}.mp4'
 
         try:
+            # final_clip.write_videofile(final_video_path,
+            #                            fps=29.97,
+            #                            threads=8,
+            #                            temp_audiofile='temp-audio.m4a',
+            #                            remove_temp=True,
+            #                            codec='libx264',
+            #                            audio_codec='aac')
             final_clip.write_videofile(final_video_path,
                                        fps=29.97,
-                                       threads=4,
+                                       threads=8,
+                                       preset='ultrafast',
                                        temp_audiofile='temp-audio.m4a',
                                        remove_temp=True,
                                        codec='libx264',
