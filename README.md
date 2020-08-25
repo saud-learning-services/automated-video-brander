@@ -20,3 +20,4 @@ _In development_
 * If no slate is specified, the tool will default to Sauder's standard intro slate `sauder_slate.mp4`
 * If no course code is provided your video will render to a folder titled "Other" ***
 * Videos with the same title will overwrite eachother in the output folder (ensure unique titles for each video)
+* If the same body clip is used more than once the script will prompt user to overwrite when watermarking (Don't include the same body twice)

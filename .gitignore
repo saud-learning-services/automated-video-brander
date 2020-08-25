@@ -15,9 +15,9 @@ input/top_slates/*
 input/body/*
 !input/body/.gitkeep
 
+input/PROCESSED
+
 input/watermark/*
 !input/watermark/.gitkeep
-
-Watermarks.psd
 
 ignore
