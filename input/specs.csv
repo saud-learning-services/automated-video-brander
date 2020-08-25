@@ -1,3 +1,8 @@
 Course,Section,Instructor,Title,Top Slate,Body,Watermark,Watermark Position
-BUSI 500,002A,Robert Helsley,Dean Bob's Intro,sauder_slate.mp4,Helsley.mp4,sauder-rhl.png,L
 COMM 101,001,Elicia Salzberg,Porter's Generic Strategies,sauder_slate.mp4,Elicia.mp4,ubc-sauder.png,R
+COMM 101,,Elicia Salzberg,Porter's Generic Strategies2,sauder_slate.mp4,Elicia.mp4,ubc-sauder.png,R
+COMM 101,,,Porter's Generic Strategies3,sauder_slate.mp4,Elicia.mp4,ubc-sauder.png,R
+,,,Porter's Generic Strategies4,sauder_slate.mp4,Elicia.mp4,ubc-sauder.png,R
+,899,Elicia Salzberg,(should fail),sauder_slate.mp4,Elicia.mp4,ubc-sauder.png,R
+,,Robert Helsley,Dean Bob's Intro,sauder_slate.mp4,Helsley.mp4,sauder-rhl.png,L
+BUSI 500,002A,Robert Helsley,Dean Bob's Intro (no slate specified),,Helsley.mp4,sauder-rhl.png,L

@@ -30,7 +30,7 @@ import pandas as pd
 from pandas.errors import EmptyDataError, ParserError
 
 # Local modules
-from src.top_maker import create_top
+from top.top import Top
 
 
 def main():
@@ -68,10 +68,9 @@ def main():
             cprint('Skipping video...', 'red')
             continue
 
-        top = create_top(course, section, instructor, title, top_slate)
-        top = top.fx(fadeout, duration=1.5,
-                     final_color=[255, 255, 255])
-        top_with_fade = top.fx(audio_fadeout, duration=1)
+        top = Top(top_slate=top_slate, title=title, course=course,
+                  section=section, instructor=instructor)
+        top_rendered = top.get_video()
 
         # same tail for all videos
         tail = VideoFileClip('input/tail/tail.mp4')
@@ -99,14 +98,21 @@ def main():
                 body = raw_body.fx(fadeout, duration=1,
                                    final_color=[255, 255, 255])
             final_clip = concatenate_videoclips(
-                [top_with_fade, body, tail])
+                [top_rendered, body, tail])
         else:
-            final_clip = concatenate_videoclips([top_with_fade, tail])
+            final_clip = concatenate_videoclips([top_rendered, tail])
 
         print(f'📁 Writing to output folder {course}...')
+
+        final_video_path = f'output/{course}/{title}.mp4'
+
+        if course is None:
+            final_video_path = f'output/other/{title}.mp4'
+
         try:
-            final_clip.write_videofile(f'output/{course}/{title}.mp4',
+            final_clip.write_videofile(final_video_path,
                                        fps=29.97,
+                                       threads=4,
                                        temp_audiofile='temp-audio.m4a',
                                        remove_temp=True,
                                        codec='libx264',
@@ -114,39 +120,47 @@ def main():
             cprint('\nSUCCESS', 'green')
         except Exception as error:
             cprint(error, 'red')
-            raise
+            continue
 
 
 def _get_video_attributes(row):
     """
     """
 
-    course = str(row['Course'])
-    section = str(row['Section'])
-    instructor = str(row['Instructor'])
-    title = str(row['Title'])
-    top_slate = str(row['Top Slate'])
-    body = str(row['Body'])
-    watermark = str(row['Watermark'])
-    wm_pos = str(row['Watermark Position'])
+    course = row['Course'] if _has_value(row['Course']) else None
+    section = row['Section'] if _has_value(row['Section']) else None
+    instructor = row['Instructor'] if _has_value(row['Instructor']) else None
+    title = row['Title'] if _has_value(row['Title']) else None
+    top_slate = row['Top Slate'] if _has_value(row['Top Slate']) else None
+    body = row['Body'] if _has_value(row['Body']) else None
+    watermark = row['Watermark'] if _has_value(row['Watermark']) else None
+    wm_pos = row['Watermark Position'] if _has_value(
+        row['Watermark Position']) else None
 
-    vals = [course, section, instructor, title,
-            top_slate, body, watermark, wm_pos]
+    all_vals = [course, section, instructor, title,
+                top_slate, body, watermark, wm_pos]
+
+    vals = filter((lambda v: v is not None), all_vals)
 
     # Course, Section, Instructor, Title, Top Slate must be included at minimum
-    if not all(map(_has_value, [course, section, instructor, title, top_slate])):
+    if title is None:
         cprint(
-            '\nERROR: Spec must have Course, Section, Instructor, Title and Top Slate value for each row',
+            '\nERROR: Spec must include at least a title',
             'red')
         raise ValueError()
+
+    if section is not None and course is None:
+        cprint(
+            '\nERROR: A row cannot specify section code without course code (specs.csv)', 'red')
+        raise ValueError
 
     # all fields must not contain invalid characters
     if all(map(_has_invalid_char, vals)):
         cprint('\nERROR: Contains illegal character', 'red')
         raise ValueError()
 
-    # top slate must finish with mp4
-    if top_slate[-4:] != '.mp4':
+    # if top slate is specified must finish with mp4
+    if top_slate is not None and str(top_slate)[-4:] != '.mp4':
         cprint('\nERROR: Must include value for slate that ends in .mp4', 'red')
         raise ValueError()
 
@@ -155,12 +169,12 @@ def _get_video_attributes(row):
         raise ValueError()
 
     # body must finish with .mp4 (if included)
-    if _has_value(body) and body[-4:] != '.mp4':
+    if body is not None and body[-4:] != '.mp4':
         cprint('\nERROR: If body is included, csv value must end in .mp4', 'red')
         raise ValueError()
 
     # watermark must end in .png
-    if (_has_value(watermark) and watermark[-4:] != '.png'):
+    if watermark is not None and watermark[-4:] != '.png':
         cprint('\nERROR: If watermark included, csv value must end in .png', 'red')
         raise ValueError()
 
@@ -182,6 +196,7 @@ def _has_invalid_char(str_val):
 
     for char in invalid_chars:
         if str_val.find(char) != -1:
+            print(f'FAILED: {str_val}')
             return True
 
     return False
@@ -193,7 +208,10 @@ def _make_course_folders(destination_path, specs):
     unique_courses = set()
     for index, row in specs.iterrows():
         if not _has_value(row['Course']):
-            # if no course value don't make a folder
+            # if no course value and no "other" folder yet, make it
+            other_dir_path = f'{destination_path}/other'
+            if not os.path.isdir(other_dir_path):
+                os.mkdir(other_dir_path)
             continue
         unique_courses.add(row['Course'])
 
