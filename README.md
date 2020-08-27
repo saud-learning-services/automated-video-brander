@@ -21,3 +21,13 @@ _In development_
 * If no course code is provided your video will render to a folder titled "Other" ***
 * Videos with the same title will overwrite eachother in the output folder (ensure unique titles for each video)
 * If the same body clip is used more than once the script will prompt user to overwrite when watermarking (Don't include the same body twice)
+
+## TODO LIST
+- [x] change outputs to something like: {title}_branded.mp4
+- [x] add column to table for source url (make it pass all the tests)
+- [] create another script called `upload_videos.py`
+    - [] interface with the panopto modules to upload all the videos in your output folder to Panopto
+    - [x] add a check to see if url starts with 'https://ubc.ca.panopto.com'
+
+* add logging
+* you should not have to not include / in your input, we should sanitize the input on our end

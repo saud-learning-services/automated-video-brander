@@ -106,10 +106,10 @@ def main():
 
         print(f'📁 Writing to output folder {course}...')
 
-        final_video_path = f'output/{course}/{title}.mp4'
+        final_video_path = f'output/{course}/{title}_branded.mp4'
 
         if course is None:
-            final_video_path = f'output/other/{title}.mp4'
+            final_video_path = f'output/other/{title}_branded.mp4'
 
         try:
             final_clip.write_videofile(final_video_path,

@@ -2,6 +2,8 @@
 __pycache__/
 *.mp4
 
+.env
+
 # keep output folder but ignore contents
 output/*
 !output/.gitkeep
