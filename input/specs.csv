@@ -1,2 +1,2 @@
-Course,Section,Instructor,Title,Top Slate,Body,Watermark,Watermark Position
-TEST,100,Dr Professor,My Title,sauder_slate.mp4,{CLIP NAME}.mp4,ubc-sauder.png,R
+Course,Section,Instructor,Title,Top Slate,Body,Watermark,Watermark Position,Source URL
+TEST,000,Marko Prodanovic,My course name,sauder_slate.mp4,{Body Name}.mp4,ubc-sauder.png,R,https://ubc.ca.panopto.com/Panopto/Pages/...

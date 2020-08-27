@@ -4,9 +4,14 @@ channels:
 dependencies:
   - ffmpeg-python
   - imagemagick
+  - python-dotenv
   - termcolor
   - moviepy
   - pip
   - pip:
     - gizeh
     - opencv-python
+    - oauthlib
+    - requests_oauthlib
+    - boto3
+    - youtube_dl

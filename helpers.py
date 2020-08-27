@@ -5,6 +5,12 @@ import pandas as pd
 from pandas.errors import EmptyDataError, ParserError
 
 
+def name_normalize(name):
+    '''TODO docstring
+    '''
+    return name.replace("/", "-")
+
+
 def load_specifications(path):
     """TODO docstring
     """
@@ -22,7 +28,7 @@ def load_specifications(path):
         sys.exit()
 
     expected_cols = {'Course', 'Section', 'Instructor', 'Title', 'Top Slate',
-                     'Body', 'Watermark', 'Watermark Position'}
+                     'Body', 'Watermark', 'Watermark Position', 'Source URL'}
 
     actual_cols = set(list(specs))
 
@@ -48,6 +54,7 @@ def get_video_attributes(row):
     watermark = row['Watermark'] if has_value(row['Watermark']) else None
     wm_pos = row['Watermark Position'] if has_value(
         row['Watermark Position']) else None
+    src_url = row['Source URL'] if has_value(row['Source URL']) else None
 
     all_vals = [course, section, instructor, title,
                 top_slate, body, watermark, wm_pos]
@@ -80,6 +87,12 @@ def get_video_attributes(row):
         cprint('\nERROR: Does not support titles with more than 45 characters', 'red')
         raise ValueError()
 
+    # instructor name(s) must not exceed 50 characters
+    if len(instructor) > 50:
+        cprint(
+            '\nERROR: Does not support instructor name(s) with more than 50 characters', 'red')
+        raise ValueError()
+
     # body must finish with .mp4 (if included)
     if body is not None and body[-4:] != '.mp4':
         cprint('\nERROR: If body is included, csv value must end in .mp4', 'red')
@@ -98,6 +111,7 @@ def get_video_attributes(row):
         'top_slate': top_slate,
         'body': body,
         'watermark': watermark,
+        'src_url': src_url,
         'wm_pos': wm_pos
     }
 
