@@ -15,3 +15,4 @@ dependencies:
     - requests_oauthlib
     - boto3
     - youtube_dl
+    - ffprobe-python

@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Session xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://tempuri.org/UniversalCaptureSpecification/v1">
-  <Title>Another vid_branded</Title>
-  <Description>This video was processed by the Sauder Automated Video Branding Tool</Description>
-  <Date>2020-08-26T20:30:43.158214-00:00</Date>
-  <ThumbnailTime>PT5S</ThumbnailTime>
+  <Title>{Title}</Title>
+  <Description>{Description}</Description>
+  <Date>{Date}</Date>
   <Videos>
     <Video>
       <Start>PT0S</Start>
-      <File>Another vid_branded.mp4</File>
+      <File>{PrimaryFilename}</File>
       <Type>Primary</Type>
+    </Video>
+    <Video>
+      <Start>PT0S</Start>
+      <File>{SecondaryFilename}/File>
+      <Type>Secondary</Type>
     </Video>
   </Videos>
 </Session>

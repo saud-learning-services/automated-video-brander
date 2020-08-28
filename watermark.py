@@ -33,39 +33,50 @@ def process_body_clips():
             '\n========================================================================\n')
         course = row['Course']
         title = row['Title']
+        instructor = row['Instructor']
         print(f'🎥 {course} | {title} | Row {index + 1}')
 
         try:
             video = get_video_attributes(row)
-            body = video['body']
             watermark = video['watermark']
             wm_position = video['wm_pos']
         except ValueError:
             cprint('Skipping video...', 'red')
             continue
 
-        if (has_value(body)):
+        input_folder = f'input/body/{title}_{instructor}'
+        output_folder = f'input/body/PROCESSED/{title}_{instructor}'
 
-            body_path = f'input/body/{body}'
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
 
-            if (has_value(watermark)):
-                watermark_path = f'input/watermark/bottom-right/{watermark}'
+        for filename in os.listdir(input_folder):
+            input_video_file_path = f'{input_folder}/{filename}'
+            output_video_file_path = f'{output_folder}/{filename}'
+            print(f'FILENAME: {filename}')
+            if filename.endswith(".mp4"):
+                if (has_value(watermark)):
+                    watermark_path = f'input/watermark/bottom-right/{watermark}'
 
-                if wm_position in ['l', 'L']:
-                    watermark_path = f'input/watermark/bottom-left/{watermark}'
+                    if wm_position in ['l', 'L']:
+                        watermark_path = f'input/watermark/bottom-left/{watermark}'
 
-                # _make_temporary_working_folder()
+                    body_clip = Body(
+                        filename, input_video_file_path, output_video_file_path, watermark_path)
 
-                body_clip = Body(body, body_path, watermark_path)
-
-                body_path = body_clip.get_video()
+                    body_clip.process_video()
+                else:
+                    cprint(
+                        'Clip does not need watermark, moving raw clip to PROCESSING folder', 'yellow')
+                    copyfile(
+                        input_video_file_path, output_video_file_path)
             else:
                 cprint(
-                    'Clip does not need watermark, moving raw clip to PROCESSING folder', 'yellow')
-                copyfile(body_path, f'input/body/PROCESSED/{body}')
-
+                    f'Error: there should not be a non-mp4 file in: {input_folder}')
+                continue
 
 # PRIVATE HELPERS:
+
 
 def _make_temporary_working_folder():
     """
