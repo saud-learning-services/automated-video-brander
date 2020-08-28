@@ -1,4 +1,5 @@
 #!python3
+from dotenv import load_dotenv
 import os
 import json
 import copy
@@ -7,12 +8,13 @@ import time
 from datetime import datetime
 import boto3  # AWS SDK (boto3)
 import requests
+import youtube_dl
 
-import webbrowser
+# import webbrowser
 
 # import youtube_dl
 
-from helpers import name_normalize
+# from helpers import name_normalize
 
 # Modified class from:
 # => https://github.com/Panopto/upload-python-sample/tree/master/simplest
@@ -83,90 +85,45 @@ class Panopto:
         # Throw unhandled cases.
         response.raise_for_status()
 
-    def download_video(self, session_id):
-        '''
-        TODO Currently just returns the download url
-        '''
-        session = self.__get_session(session_id)
-
-        # to print out entire session UNCOMMENT FOLLOWING LINE
-        print(json.dumps(session, indent=4, sort_keys=True))
-
-        download_url = session['Urls']['DownloadUrl']
+    def download_video(self, session_id, output_folder):
+        load_dotenv()
+        server = os.getenv('SERVER')
+        # session = self.__get_session(session_id)
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
 
         self.requests_session.headers.update(
             {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15',
              'Content-Type': 'video/mp4'})
         self.requests_session.cookies = requests.utils.cookiejar_from_dict(
-            {'.ASPXAUTH': '795D9A4FC5ACEC5412CB054597EC3BE95E0DB17842E32FA82990B3671956963D7741004EE2BF5CB48757C510C5BF18284F836A17D61DDE31EFB586067FF5F0E19606FD73463D87C0CF7F7C57CF2F3902CC90D9D332BEAEE78650FA1737D6392CA185B9D9807977EBA3A549BE435175CDC2E74BEF207CE0477E5DAA4F178A54223D6A11121CECF76E9D0A97DC3424AD9812F91C53D435FDED5BF47D95226CF36B138E6BE4412A8B94DA451672C7E036CB1F88D1A36739B9A75E0AF755582A525A5C79D4FFC56DE1A6AAC3A0F70B76CB4545183B681B870C51963CE0BE79AE7115671EDD0E40427B38D1E5E34EC108E9D8'})
-        # self.requests_session.cookies = requests.utils.cookiejar_from_dict(
-        #     {'.ASPXAUTH': '795D9A4FC5ACEC5412CB054597EC3BE95E0DB17842E32FA82990B3671956963D7741004EE2BF5CB48757C510C5BF18284F836A17D61DDE31EFB586067FF5F0E19606FD73463D87C0CF7F7C57CF2F3902CC90D9D332BEAEE78650FA1737D6392CA185B9D9807977EBA3A549BE435175CDC2E74BEF207CE0477E5DAA4F178A54223D6A11121CECF76E9D0A97DC3424AD9812F91C53D435FDED5BF47D95226CF36B138E6BE4412A8B94DA451672C7E036CB1F88D1A36739B9A75E0AF755582A525A5C79D4FFC56DE1A6AAC3A0F70B76CB4545183B681B870C51963CE0BE79AE7115671EDD0E40427B38D1E5E34EC108E9D8'})
+            {'.ASPXAUTH': os.getenv('ASPXAUTH')})
 
-        res = self.requests_session.get(url=download_url, stream=True)
-
-        print(res.status_code)
-        # print(res.text)
-
-        with open("test.mp4", 'wb') as f:
-            f.write(res.content)
-
-        # dest_dir = 'output'
-        # if not os.path.exists(dest_dir):
-        #     os.makedirs(dest_dir)
-        # url = f'https://{self.server}/Panopto/Pages/Viewer/DeliveryInfo.aspx/'
-        # delivery_info = self.requests_session.get(url=url, **{'params': {
-        #     "deliveryId": "09199b1c-9ec9-4588-80f1-ac2301238d42",
-        #     "responseType": "json"
-        # }})
-
-        # print(delivery_info.status_code)
-        # print(delivery_info.json())
-
-        # delivery_info = self.json_api("/Panopto/Pages/Viewer/DeliveryInfo.aspx", {
-        #     "deliveryId": ''delivery_id'',
-        #     "responseType": "json"
-        # }, True, "data")
-        # streams = delivery_info["Delivery"]["Streams"]
-        # for i in range(len(streams)):
-        #     filename = "{:02d}_{}.mp4".format(i, streams[i]["Tag"])
-        #     dest_filename = os.path.join(dest_dir, filename)
-        #     print("Downloading:", dest_filename)
-        #     ydl_opts = {
-        #         "outtmpl": dest_filename,
-        #         "quiet": True
-        #     }
-        #     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        #         ydl.download([streams[i]["StreamUrl"]])
-
-        # headers = {
-
-        #     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15'}
-        # res = requests.get(download_url, allow_redirects=True, headers=headers)
-        # self.requests_session.headers.update(
-        #     {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15',
-        #      'Content-Type': 'video/mp4'})
-        # self.requests_session.cookies = requests.utils.cookiejar_from_dict(
-        #     {'.ASPXAUTH': self.current_token})
-        # res = self.requests_session.get(url=download_url, stream=True)
-
-        # print(res.status_code)
-        # print(res.text)
-
-        # print(self.requests_session.headers)
-        # print(self.requests_session.cookies)
-
-        # with open("test.mp4", 'wb') as f:
-        #     # giving a name and saving it in any required format
-        #     # opening the file in write mode
-        #     f.write(res.content)
-
-        # if res.ok:
-        #     print(res)
-        # else:
-        #     print('Something went wront')
-
-        # with open("test.mp4", 'wb') as f:
-        #     f.write(res.content)
+        url = f'https://{server}/Panopto/Pages/Viewer/DeliveryInfo.aspx'
+        params = {
+            "deliveryId": session_id,
+            "responseType": "json"
+        }
+        delivery_info = self.requests_session.post(url=url, params=params)
+        delivery_info = json.loads(delivery_info.text)
+        streams = delivery_info["Delivery"]["Streams"]
+        # print(streams)
+        for i in range(len(streams)):
+            filename = "{:02d}_{}.mp4".format(i, streams[i]["Tag"])
+            if streams[i]['StreamType'] == 1:
+                filename = 'primary.mp4'
+            elif streams[i]['StreamType'] == 2:
+                filename = 'secondary.mp4'
+            else:
+                raise ValueError
+            # filename = "{:02d}_{}.mp4".format(i, streams[i]["Tag"])
+            dest_filename = os.path.join(output_folder, filename)
+            print("Downloading:", dest_filename)
+            ydl_opts = {
+                "outtmpl": dest_filename,
+                "quiet": True
+            }
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([streams[i]["StreamUrl"]])
 
     def __get_session(self, session_id):
         '''
@@ -174,6 +131,7 @@ class Panopto:
         '''
         while True:
             url = 'https://{0}/Panopto/api/v1/sessions/{1}'.format(
+
                 self.server, session_id)
             resp = self.requests_session.get(url=url)
             if self.__inspect_response_is_retry_needed(resp):
@@ -204,6 +162,8 @@ class Panopto:
         upload_id = session_upload['ID']
         upload_target = session_upload['UploadTarget']
 
+        print('UPLOAD TARGET: ' + upload_target)
+
         # step 2 - upload the video file
         self.__multipart_upload_single_file(upload_target, file_path)
 
@@ -216,6 +176,45 @@ class Panopto:
 
         # step 5 - monitor the progress of processing
         self.__monitor_progress(upload_id)
+
+    def upload_folder(self, local_folder, folder_id):
+        '''
+        Main upload method to go through all required steps.
+        '''
+        # step 1 - Create a session
+        session_upload = self.__create_session(folder_id)
+        upload_id = session_upload['ID']
+        upload_target = session_upload['UploadTarget']
+
+        print('UPLOAD TARGET: ' + upload_target)
+
+        # step 2 - Enumerate files under the local folder
+        files = self.__enumerate_files(local_folder)
+
+        # step 3 - upload the files
+        for file_path in files:
+            self.__multipart_upload_single_file(upload_target, file_path)
+
+        # step 4 - finish the upload
+        self.__finish_upload(session_upload)
+
+        # step 5 - monitor the progress of processing
+        self.__monitor_progress(upload_id)
+
+    def __enumerate_files(self, folder):
+        '''
+        Return the list of files in the specified folder. Not to traverse sub folders.
+        '''
+        print('')
+        files = []
+        for entry in os.listdir(folder):
+            path = os.path.join(folder, entry)
+            if os.path.isdir(path):
+                continue
+            files.append(path)
+            print('  {0}'.format(path))
+
+        return files
 
     def __create_session(self, folder_id):
         '''

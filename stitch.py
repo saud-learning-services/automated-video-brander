@@ -70,7 +70,7 @@ def main():
             instructor = video['instructor']
             title = video['title']
             top_slate = video['top_slate']
-            body = video['body']
+            # body = video['body']
         except ValueError:
             cprint('Skipping video...', 'red')
             continue
@@ -83,11 +83,13 @@ def main():
         tail = VideoFileClip(
             'input/tail/tail.mp4').fx(audio_fadein, duration=1.5)
 
-        if (has_value(body)):
-            body_path = f'input/body/PROCESSED/{body}'
+        # if (has_value(body)):
+        clips_folder = f'input/body/PROCESSED/{title}_{instructor}'
+        # body_path = f'input/body/PROCESSED/{body}'
 
+        for clip_name in os.listdir(clips_folder):
             try:
-                body_video = (VideoFileClip(body_path)
+                body_video = (VideoFileClip(f'{clips_folder}/{clip_name}')
                               .fx(fadein, duration=1, initial_color=[255, 255, 255])
                               .fx(fadeout, duration=1, final_color=[255, 255, 255])
                               .fx(audio_fadeout, duration=2)
@@ -97,33 +99,40 @@ def main():
                     [top_rendered, body_video, tail])
 
             except OSError:
-                cprint('Could not find specifiied body clip in path: ', 'red')
-                cprint(body_path, 'yellow')
+                cprint(
+                    f'Could not find specifiied clip: "{clip_name}" in folder: ', 'red')
+                cprint(clips_folder, 'yellow')
                 cprint('Skipping video...', 'red')
                 continue
-        else:
-            final_clip = concatenate_videoclips([top_rendered, tail])
+            # else:
+            #     final_clip = concatenate_videoclips([top_rendered, tail])
 
-        print(f'📁 Writing to output folder {course}...')
+            if course is None:
+                output_folder = f'output/other/{title}_{instructor}'
+            else:
+                output_folder = f'output/{course}/{title}_{instructor}'
 
-        final_video_path = f'output/{course}/{title}_branded.mp4'
+            if not os.path.exists(output_folder):
+                os.makedirs(output_folder)
 
-        if course is None:
-            final_video_path = f'output/other/{title}_branded.mp4'
+            print(
+                f'📁 Writing to output folder "{output_folder}"...')
 
-        try:
-            final_clip.write_videofile(final_video_path,
-                                       fps=30,
-                                       threads=8,
-                                       preset='ultrafast',
-                                       temp_audiofile='temp-audio.m4a',
-                                       remove_temp=True,
-                                       codec='libx264',
-                                       audio_codec='aac')
-            cprint('\nSUCCESS', 'green')
-        except Exception as error:
-            cprint(error, 'red')
-            continue
+            output_video_path = f'{output_folder}/{clip_name}_branded.mp4'
+
+            try:
+                final_clip.write_videofile(output_video_path,
+                                           fps=30,
+                                           threads=8,
+                                           preset='ultrafast',
+                                           temp_audiofile='temp-audio.m4a',
+                                           remove_temp=True,
+                                           codec='libx264',
+                                           audio_codec='aac')
+                cprint('\nSUCCESS', 'green')
+            except Exception as error:
+                cprint(error, 'red')
+                continue
 
 
 def _make_course_folders(destination_path, specs):
