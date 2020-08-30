@@ -11,7 +11,7 @@
     </Video>
     <Video>
       <Start>PT0S</Start>
-      <File>{SecondaryFilename}/File>
+      <File>{SecondaryFilename}</File>
       <Type>Secondary</Type>
     </Video>
   </Videos>

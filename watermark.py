@@ -10,42 +10,49 @@ from helpers import load_specifications, get_video_attributes, has_value
 
 
 def process_body_clips():
-    """
+    '''
     ARG: specs (Pandas Dataframe)
     Loops through all the rows in the CSV
     If a clip has a body, check if it has a watermark
     If a clip has a watermark, render it (with watermark) to body/PROCESSED folder
     It not, just move the clip over
-    """
+    '''
 
-    print('🗑  Deleting PROCESSING folder')
-    _delete_temporary_working_folder()
+    cprint('Deleting "PROCESSING" folder...', 'yellow')
+    __delete_processing_folder()
+
+    cprint('Creating empty "PROCESSING" folder', 'yellow')
+    __make_processing_folder()
 
     root = os.path.dirname(os.path.abspath(__file__))
-
-    print('📁 Recreating empty PROCESSING folder')
-    _make_temporary_working_folder()
-
     specs = load_specifications(root + '/input')
 
     for index, row in specs.iterrows():
-        print(
-            '\n========================================================================\n')
-        course = row['Course']
-        title = row['Title']
-        instructor = row['Instructor']
-        print(f'🎥 {course} | {title} | Row {index + 1}')
+        print('\n------------------------------------------\n')
 
         try:
-            video = get_video_attributes(row)
-            watermark = video['watermark']
-            wm_position = video['wm_pos']
+            specs = get_video_attributes(row)
         except ValueError:
             cprint('Skipping video...', 'red')
             continue
 
-        input_folder = f'input/body/{title}_{instructor}'
-        output_folder = f'input/body/PROCESSED/{title}_{instructor}'
+        course = specs['course']
+        title = specs['title']
+        instructor = specs['instructor']
+        watermark = specs['watermark']
+        wm_position = specs['wm_pos']
+
+        cprint(f'Starting watermarking for <row {index}>:', 'yellow')
+        print(f'\nVIDEO TITLE: {title}')
+        print(f'COURSE: {course}')
+        print(f'INSTRUCTOR NAME: {instructor}\n')
+
+        input_folder = f'{root}/input/body/{title}_{instructor}'
+        output_folder = f'{root}/input/body/PROCESSED/{title}_{instructor}'
+
+        if not instructor:
+            input_folder = f'{root}/input/body/{title}'
+            output_folder = f'{root}/input/body/PROCESSED/{title}'
 
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
@@ -72,17 +79,15 @@ def process_body_clips():
                         input_video_file_path, output_video_file_path)
             else:
                 cprint(
-                    f'Error: there should not be a non-mp4 file in: {input_folder}')
+                    f'Skipping {filename}, non-mp4 file in: {input_folder}')
                 continue
 
-# PRIVATE HELPERS:
 
-
-def _make_temporary_working_folder():
-    """
+def __make_processing_folder():
+    '''
     Creates a temporary working folder for watermarked videos
     Returns the file path
-    """
+    '''
 
     temp_dir_path = 'input/body/PROCESSED'
 
@@ -91,10 +96,10 @@ def _make_temporary_working_folder():
     return 0
 
 
-def _delete_temporary_working_folder():
-    """
+def __delete_processing_folder():
+    '''
     Delete the temporary folder made by _make_temporary_working_folder()
-    """
+    '''
     temp_dir_path = 'input/body/PROCESSED'
     if os.path.isdir(temp_dir_path):
         shutil.rmtree(temp_dir_path, ignore_errors=False, onerror=None)

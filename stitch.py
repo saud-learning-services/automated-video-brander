@@ -1,24 +1,18 @@
-"""
+'''
 UBC Sauder School of Business
 Automated Video Branding Tool
 
 Author: Marko Prodanovic
-"""
+'''
 
 # Standard imports
-import shutil
-# import sys
 import os
 
 # Moviepy (primary library)
 # Docs: https://zulko.github.io/moviepy/index.html
 from moviepy.editor import (
     VideoFileClip,
-    # ImageClip,
-    # CompositeVideoClip,
     concatenate_videoclips)
-# import moviepy.video.fx.all as vfx
-# import moviepy.audio.fx.all as sfx
 
 from moviepy.video.fx.fadein import fadein
 from moviepy.video.fx.fadeout import fadeout
@@ -32,48 +26,43 @@ from termcolor import cprint
 # Local modules
 from top.top import Top
 
-from helpers import load_specifications, get_video_attributes, has_value
+from helpers import load_specifications, get_video_attributes, archive_folder_contents
 
 
 def main():
-    """ Main entry point for Automated Video Branding Tool
-    """
+    '''
+    Main entry point for Automated Video Branding Tool
+    '''
 
-    # settings object for global variables
-    settings = {
-        'root': os.path.dirname(os.path.abspath(__file__))
-    }
+    # project root directory
+    root = os.path.dirname(os.path.abspath(__file__))
 
-    print('\n🚚 Loading Specifications from CSV...')
-    specs = load_specifications(settings['root'] + '/input')
+    cprint('\nLoading Specifications from CSV...', 'yellow')
+    specs = load_specifications(root + '/input')
 
-    print('🧹 Clearing output folder...')
-    _clear_folder_contents(settings['root'] + '/output')
-
-    print('🔨 Building course folders in output folder...')
-    _make_course_folders(settings['root'] + '/output', specs)
-
-    # ==== STITCH VIDEOS TOGETHER ====
+    cprint('\Archiving & clearing output folder...', 'yellow')
+    archive_folder_contents('output')
 
     for index, row in specs.iterrows():
 
-        print(
-            '\n========================================================================\n')
-        course = row['Course']
-        title = row['Title']
-        print(f'🎥 {course} | {title} | Row {index + 1}')
+        print('\n------------------------------------------\n')
 
         try:
-            video = get_video_attributes(row)
-            course = video['course']
-            section = video['section']
-            instructor = video['instructor']
-            title = video['title']
-            top_slate = video['top_slate']
-            # body = video['body']
+            specs = get_video_attributes(row)
         except ValueError:
             cprint('Skipping video...', 'red')
             continue
+
+        course = specs['course']
+        section = specs['section']
+        instructor = specs['instructor']
+        title = specs['title']
+        top_slate = specs['top_slate']
+
+        cprint(f'Starting top/tail stitching for <row {index}>:', 'yellow')
+        print(f'\nVIDEO TITLE: {title}')
+        print(f'COURSE: {course}')
+        print(f'INSTRUCTOR NAME: {instructor}\n')
 
         top = Top(top_slate=top_slate, title=title, course=course,
                   section=section, instructor=instructor)
@@ -83,42 +72,37 @@ def main():
         tail = VideoFileClip(
             'input/tail/tail.mp4').fx(audio_fadein, duration=1.5)
 
-        # if (has_value(body)):
-        clips_folder = f'input/body/PROCESSED/{title}_{instructor}'
-        # body_path = f'input/body/PROCESSED/{body}'
+        input_folder = f'input/body/PROCESSED/{title}_{instructor}'
+        output_folder = f'output/{title}_{instructor}'
 
-        for clip_name in os.listdir(clips_folder):
+        if not instructor:
+            input_folder = f'input/body/PROCESSED/{title}'
+            output_folder = f'output/{title}'
+
+        for clip_name in os.listdir(input_folder):
             try:
-                body_video = (VideoFileClip(f'{clips_folder}/{clip_name}')
+                body_video = (VideoFileClip(f'{input_folder}/{clip_name}')
                               .fx(fadein, duration=1, initial_color=[255, 255, 255])
                               .fx(fadeout, duration=1, final_color=[255, 255, 255])
                               .fx(audio_fadeout, duration=2)
                               .fx(audio_fadein, duration=1.5))
-                #   .fx(audio_fadeout, duration=1.5))
                 final_clip = concatenate_videoclips(
                     [top_rendered, body_video, tail])
 
             except OSError:
                 cprint(
                     f'Could not find specifiied clip: "{clip_name}" in folder: ', 'red')
-                cprint(clips_folder, 'yellow')
+                cprint(input_folder, 'yellow')
                 cprint('Skipping video...', 'red')
                 continue
-            # else:
-            #     final_clip = concatenate_videoclips([top_rendered, tail])
-
-            if course is None:
-                output_folder = f'output/other/{title}_{instructor}'
-            else:
-                output_folder = f'output/{course}/{title}_{instructor}'
 
             if not os.path.exists(output_folder):
                 os.makedirs(output_folder)
 
-            print(
-                f'📁 Writing to output folder "{output_folder}"...')
+            cprint(
+                f'Writing to output folder: \n=> {output_folder}\n', 'blue')
 
-            output_video_path = f'{output_folder}/{clip_name}_branded.mp4'
+            output_video_path = f'{output_folder}/{clip_name}'
 
             try:
                 final_clip.write_videofile(output_video_path,
@@ -135,38 +119,23 @@ def main():
                 continue
 
 
-def _make_course_folders(destination_path, specs):
-    """TODO Docstring
-    """
-    unique_courses = set()
-    for index, row in specs.iterrows():
-        if not has_value(row['Course']):
-            # if no course value and no "other" folder yet, make it
-            other_dir_path = f'{destination_path}/other'
-            if not os.path.isdir(other_dir_path):
-                os.mkdir(other_dir_path)
-            continue
-        unique_courses.add(row['Course'])
+# def __make_course_folders(destination_path, specs):
+#     unique_courses = set()
+#     for index, row in specs.iterrows():
+#         if not has_value(row['Course']):
+#             # if no course value and no "other" folder yet, make it
+#             other_dir_path = f'{destination_path}/other'
+#             if not os.path.isdir(other_dir_path):
+#                 os.mkdir(other_dir_path)
+#             continue
+#         unique_courses.add(row['Course'])
 
-    for course in unique_courses:
-        path = f'{destination_path}/{course}'
-        try:
-            os.mkdir(path)
-        except OSError as error:
-            print(error)
-
-
-def _clear_folder_contents(folder_path):
-    """Clears directory contents
-
-    Args:
-        folder_path: Path of the folder to clear
-    """
-
-    for subdir in os.listdir(folder_path):
-        if subdir not in ('.gitkeep', '.DS_Store'):
-            subdir_path = f'{folder_path}/{subdir}'
-            shutil.rmtree(subdir_path, ignore_errors=False, onerror=None)
+#     for course in unique_courses:
+#         path = f'{destination_path}/{course}'
+#         try:
+#             os.mkdir(path)
+#         except OSError as error:
+#             print(error)
 
 
 if __name__ == '__main__':
