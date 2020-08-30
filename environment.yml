@@ -2,9 +2,17 @@ name: top_and_tail_stitcher_env
 channels:
   - conda-forge
 dependencies:
+  - ffmpeg-python
   - imagemagick
+  - python-dotenv
   - termcolor
   - moviepy
   - pip
   - pip:
     - gizeh
+    - opencv-python
+    - oauthlib
+    - requests_oauthlib
+    - boto3
+    - youtube_dl
+    - ffprobe-python

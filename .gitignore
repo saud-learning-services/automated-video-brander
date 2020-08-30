@@ -2,6 +2,8 @@
 __pycache__/
 *.mp4
 
+.env
+
 # keep output folder but ignore contents
 output/*
 !output/.gitkeep
@@ -13,9 +15,11 @@ input/top_slates/*
 !input/top_slates/.gitkeep
 
 input/body/*
-!input/body/.gitkeep
+!input/body/.gitkeep]
+
+input/PROCESSED
 
 input/watermark/*
 !input/watermark/.gitkeep
 
-Watermarks.psd
+ignore
