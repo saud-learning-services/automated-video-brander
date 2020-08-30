@@ -1,5 +1,5 @@
 '''
-UBC Sauder School of Business
+stitch.py
 Automated Video Branding Tool
 
 Author: Marko Prodanovic
@@ -29,9 +29,9 @@ from top.top import Top
 from helpers import load_specifications, get_video_attributes, archive_folder_contents
 
 
-def main():
+def stitch():
     '''
-    Main entry point for Automated Video Branding Tool
+    Stitch the top, body and tail clips together
     '''
 
     # project root directory
@@ -40,7 +40,7 @@ def main():
     cprint('\nLoading Specifications from CSV...', 'yellow')
     specs = load_specifications(root + '/input')
 
-    cprint('\Archiving & clearing output folder...', 'yellow')
+    cprint('Archiving & clearing output folder...', 'yellow')
     archive_folder_contents('output')
 
     for index, row in specs.iterrows():
@@ -119,24 +119,5 @@ def main():
                 continue
 
 
-# def __make_course_folders(destination_path, specs):
-#     unique_courses = set()
-#     for index, row in specs.iterrows():
-#         if not has_value(row['Course']):
-#             # if no course value and no "other" folder yet, make it
-#             other_dir_path = f'{destination_path}/other'
-#             if not os.path.isdir(other_dir_path):
-#                 os.mkdir(other_dir_path)
-#             continue
-#         unique_courses.add(row['Course'])
-
-#     for course in unique_courses:
-#         path = f'{destination_path}/{course}'
-#         try:
-#             os.mkdir(path)
-#         except OSError as error:
-#             print(error)
-
-
 if __name__ == '__main__':
-    main()
+    stitch()

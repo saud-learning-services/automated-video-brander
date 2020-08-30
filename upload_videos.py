@@ -8,7 +8,7 @@ from panopto.panopto_oauth2 import PanoptoOAuth2
 from panopto.panopto_interface import Panopto
 
 
-def main():
+def upload_videos():
     load_dotenv()
 
     root = os.path.dirname(os.path.abspath(__file__))
@@ -136,4 +136,4 @@ def __normalize_title(title):
 
 
 if __name__ == '__main__':
-    main()
+    upload_videos()

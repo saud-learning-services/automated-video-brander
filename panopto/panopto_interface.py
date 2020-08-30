@@ -1,20 +1,11 @@
-#!python3
-from dotenv import load_dotenv
 import os
 import json
 import copy
-import codecs
 import time
-from datetime import datetime
 import boto3  # AWS SDK (boto3)
+from dotenv import load_dotenv
 import requests
 import youtube_dl
-
-# import webbrowser
-
-# import youtube_dl
-
-# from helpers import name_normalize
 
 # Modified class from:
 # => https://github.com/Panopto/upload-python-sample/tree/master/simplest
@@ -24,14 +15,18 @@ import youtube_dl
 # This must be between 5MB and 25MB. Panopto server may fail if the size is more than 25MB.
 PART_SIZE = 5 * 1024 * 1024
 
-# Template for manifest XML file.
-MANIFEST_FILE_TEMPLATE = 'panopto/upload_manifest_template.xml'
-
-# Filename of manifest XML file. Any filename is acceptable.
-MANIFEST_FILE_NAME = 'panopto/upload_manifest_generated.xml'
-
 
 class Panopto:
+    '''
+    Main interface for doing anything Panopto related
+
+    MODIFIED VERSION OF: https://github.com/Panopto/upload-python-sample/tree/master/simplest
+    Contributors (GitHub): Hiroshi Ohno, Zac Rumford
+    Apache-2.0 License
+
+    *modified to suit our specific use-case*
+    '''
+
     def __init__(self, server, ssl_verify, oauth2):
         '''
         Constructor of uploader instance.
@@ -86,9 +81,12 @@ class Panopto:
         response.raise_for_status()
 
     def download_video(self, session_id, output_folder):
+        '''
+        Download's video file from Panopto session (session_id) to output folder
+        '''
         load_dotenv()
         server = os.getenv('SERVER')
-        # session = self.__get_session(session_id)
+
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
@@ -103,27 +101,35 @@ class Panopto:
             "deliveryId": session_id,
             "responseType": "json"
         }
-        delivery_info = self.requests_session.post(url=url, params=params)
-        delivery_info = json.loads(delivery_info.text)
-        streams = delivery_info["Delivery"]["Streams"]
-        # print(streams)
-        for i in range(len(streams)):
-            filename = "{:02d}_{}.mp4".format(i, streams[i]["Tag"])
-            if streams[i]['StreamType'] == 1:
+        resp = self.requests_session.post(url=url, params=params)
+
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f'Download response came with status code {resp.status_code}\nCheck ASPXAUTH token.')
+
+        delivery_info = json.loads(resp.text)
+        if 'ErrorMessage' in delivery_info.keys():
+            message = delivery_info['ErrorMessage']
+            raise RuntimeError(
+                f'Download response came with message: {message}\nCheck ASPXAUTH token.')
+
+        streams = delivery_info['Delivery']['Streams']
+        for stream in streams:
+            if stream['StreamType'] == 1:
                 filename = 'primary.mp4'
-            elif streams[i]['StreamType'] == 2:
+            elif stream['StreamType'] == 2:
                 filename = 'secondary.mp4'
             else:
                 raise ValueError
-            # filename = "{:02d}_{}.mp4".format(i, streams[i]["Tag"])
+
             dest_filename = os.path.join(output_folder, filename)
-            print("Downloading:", dest_filename)
+            print('Downloading to: ', dest_filename)
             ydl_opts = {
                 "outtmpl": dest_filename,
                 "quiet": True
             }
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([streams[i]["StreamUrl"]])
+                ydl.download([stream['StreamUrl']])
 
     def __get_session(self, session_id):
         '''
@@ -152,30 +158,6 @@ class Panopto:
         folder_name = details['Name']
 
         return (folder_name, folder_id)
-
-    def upload_video(self, file_path, folder_id):
-        '''
-        Main upload method to go through all required steps.
-        '''
-        # step 1 - Create a session
-        session_upload = self.__create_session(folder_id)
-        upload_id = session_upload['ID']
-        upload_target = session_upload['UploadTarget']
-
-        print('UPLOAD TARGET: ' + upload_target)
-
-        # step 2 - upload the video file
-        self.__multipart_upload_single_file(upload_target, file_path)
-
-        # step 3 - create manifest file and uplaod it
-        self.__create_manifest_for_video(file_path, MANIFEST_FILE_NAME)
-        self.__multipart_upload_single_file(upload_target, MANIFEST_FILE_NAME)
-
-        # step 4 - finish the upload
-        self.__finish_upload(session_upload)
-
-        # step 5 - monitor the progress of processing
-        self.__monitor_progress(upload_id)
 
     def upload_folder(self, local_folder, folder_id):
         '''
@@ -293,25 +275,6 @@ class Panopto:
         result = s3.complete_multipart_upload(
             Bucket=bucket, Key=object_key, UploadId=mpu_id, MultipartUpload={"Parts": parts})
         print('  -- complete called.')
-
-    def __create_manifest_for_video(self, file_path, manifest_file_name):
-        '''
-        Create manifest XML file for a single video file, based on template.
-        '''
-        print('')
-        print('Writing manifest file: {0}'.format(manifest_file_name))
-
-        file_name = os.path.basename(file_path)
-
-        with open(MANIFEST_FILE_TEMPLATE) as fr:
-            template = fr.read()
-        content = template\
-            .replace('{Title}', file_name[:-4])\
-            .replace('{Description}', 'This video was processed by the Sauder Automated Video Branding Tool')\
-            .replace('{Filename}', file_name)\
-            .replace('{Date}', datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f-00:00'))
-        with codecs.open(manifest_file_name, 'w', 'utf-8') as fw:
-            fw.write(content)
 
     def __finish_upload(self, session_upload):
         '''

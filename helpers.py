@@ -11,7 +11,7 @@ from pandas.errors import EmptyDataError, ParserError
 
 def name_normalize(name):
     '''
-    Replaces "/" characters with "-" to 
+    Replaces "/" characters with "-" to
     '''
     if name is None:
         return name
@@ -37,8 +37,8 @@ def load_specifications(path):
         cprint('\nERROR: Ensure specs.csv has data.', 'red')
         sys.exit()
 
-    expected_cols = {'Course', 'Section', 'Instructor', 'Title', 'Top Slate',
-                     'Body', 'Watermark', 'Watermark Position', 'Source URL'}
+    expected_cols = {'Course', 'Section', 'Instructor', 'Title',
+                     'Top Slate', 'Watermark', 'Watermark Position', 'Source URL'}
 
     actual_cols = set(list(specs))
 
@@ -54,7 +54,7 @@ def load_specifications(path):
 def get_video_attributes(row):
     '''
     Loads the cell values from the dataframe row into a dictionary
-    Performs a series of checks to ensure values math certain expected criteria (described below) 
+    Performs a series of checks to ensure values math certain expected criteria (described below)
     '''
 
     course = __parse_value(row['Course'])
@@ -62,7 +62,6 @@ def get_video_attributes(row):
     instructor = __parse_value(row['Instructor'])
     title = __parse_value(row['Title'])
     top_slate = __parse_value(row['Top Slate'])
-    body = __parse_value(row['Body'])
     watermark = __parse_value(row['Watermark'])
     wm_pos = __parse_value(row['Watermark Position'])
     src_url = __parse_value(row['Source URL'])
@@ -99,11 +98,6 @@ def get_video_attributes(row):
             '\nERROR: Does not support instructor name(s) with more than 50 characters', 'red')
         raise ValueError()
 
-    # body must finish with .mp4 (if included)
-    if body is not None and body[-4:] != '.mp4':
-        cprint('\nERROR: If body is included, csv value must end in .mp4', 'red')
-        raise ValueError()
-
     # watermark must end in .png
     if watermark is not None and watermark[-4:] != '.png':
         cprint('\nERROR: If watermark included, csv value must end in .png', 'red')
@@ -115,7 +109,6 @@ def get_video_attributes(row):
         'instructor': instructor,
         'title': title,
         'top_slate': top_slate,
-        'body': body,
         'watermark': watermark,
         'src_url': src_url,
         'wm_pos': wm_pos
@@ -127,11 +120,11 @@ def __parse_value(val):
     Returns the value if it passess value check
     Otherwise returns None
     '''
-    return val if has_value(val) else None
+    return val if __has_value(val) else None
 
 
-def has_value(cell):
-    """Checks if a cell value from a Pandas dataframe is a valid string
+def __has_value(cell):
+    '''Checks if a cell value from a Pandas dataframe is a valid string
 
     The following are treated as invalid:
     * empty cell (None)
@@ -146,7 +139,7 @@ def has_value(cell):
 
     Returns:
         Boolean: Whether or not value is valid string
-    """
+    '''
 
     # Falsy values are FALSE
     if not cell:
@@ -190,7 +183,7 @@ def archive_folder_contents(folder_path):
 
 def __get_all_file_paths(directory):
     '''
-    Remturns a list of all file paths in a given directory
+    Returns a list of all file paths in a given directory
     Except those in the /archive folder
     '''
 
