@@ -173,7 +173,11 @@ def archive_folder_contents(folder_path):
 
     now = datetime.now().strftime('%Y-%m-%dT%H.%M.%S')
     output_filename = f'{now}.zip'
+
     archive_folder = f'{folder_path}/archive'
+    if not os.path.exists(archive_folder):
+        os.makedirs(archive_folder)
+
     with ZipFile(f'{archive_folder}/{output_filename}', 'w') as zip:
         # writing each file one by one
         for file in file_paths:
