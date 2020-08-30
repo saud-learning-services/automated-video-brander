@@ -1,19 +1,29 @@
+import os
 import sys
+import shutil
+from zipfile import ZipFile
 from termcolor import cprint
+from datetime import datetime
 
 import pandas as pd
 from pandas.errors import EmptyDataError, ParserError
 
 
 def name_normalize(name):
-    '''TODO docstring
     '''
-    return name.replace("/", "-")
+    Replaces "/" characters with "-" to 
+    '''
+    if name is None:
+        return name
+
+    return name.replace('/', '-')
 
 
 def load_specifications(path):
-    """TODO docstring
-    """
+    '''
+    Loads in the specs.csv file using pandas and checks that it has the necesary columns.
+    Returns the specs as a pandas dataframe.
+    '''
     try:
         specs = pd.read_csv(path + '/specs.csv', dtype={'Section': 'str'})
     except IOError as error:
@@ -42,24 +52,25 @@ def load_specifications(path):
 
 
 def get_video_attributes(row):
-    """TODO
-    """
+    '''
+    Loads the cell values from the dataframe row into a dictionary
+    Performs a series of checks to ensure values math certain expected criteria (described below) 
+    '''
 
-    course = row['Course'] if has_value(row['Course']) else None
-    section = row['Section'] if has_value(row['Section']) else None
-    instructor = row['Instructor'] if has_value(row['Instructor']) else None
-    title = row['Title'] if has_value(row['Title']) else None
-    top_slate = row['Top Slate'] if has_value(row['Top Slate']) else None
-    body = row['Body'] if has_value(row['Body']) else None
-    watermark = row['Watermark'] if has_value(row['Watermark']) else None
-    wm_pos = row['Watermark Position'] if has_value(
-        row['Watermark Position']) else None
-    src_url = row['Source URL'] if has_value(row['Source URL']) else None
+    course = __parse_value(row['Course'])
+    section = __parse_value(row['Section'])
+    instructor = __parse_value(row['Instructor'])
+    title = __parse_value(row['Title'])
+    top_slate = __parse_value(row['Top Slate'])
+    body = __parse_value(row['Body'])
+    watermark = __parse_value(row['Watermark'])
+    wm_pos = __parse_value(row['Watermark Position'])
+    src_url = __parse_value(row['Source URL'])
 
-    all_vals = [course, section, instructor, title,
-                top_slate, body, watermark, wm_pos]
-
-    vals = filter((lambda v: v is not None), all_vals)
+    # These three values are used to make filepaths therefore cannot contain "/"
+    course = name_normalize(course)
+    instructor = name_normalize(instructor)
+    title = name_normalize(title)
 
     # Course, Section, Instructor, Title, Top Slate must be included at minimum
     if title is None:
@@ -73,11 +84,6 @@ def get_video_attributes(row):
             '\nERROR: A row cannot specify section code without course code (specs.csv)', 'red')
         raise ValueError
 
-    # all fields must not contain invalid characters
-    if all(map(_has_invalid_char, vals)):
-        cprint('\nERROR: Contains illegal character', 'red')
-        raise ValueError()
-
     # if top slate is specified must finish with mp4
     if top_slate is not None and str(top_slate)[-4:] != '.mp4':
         cprint('\nERROR: Must include value for slate that ends in .mp4', 'red')
@@ -88,7 +94,7 @@ def get_video_attributes(row):
         raise ValueError()
 
     # instructor name(s) must not exceed 50 characters
-    if len(instructor) > 50:
+    if instructor is not None and len(instructor) > 50:
         cprint(
             '\nERROR: Does not support instructor name(s) with more than 50 characters', 'red')
         raise ValueError()
@@ -114,6 +120,14 @@ def get_video_attributes(row):
         'src_url': src_url,
         'wm_pos': wm_pos
     }
+
+
+def __parse_value(val):
+    '''
+    Returns the value if it passess value check
+    Otherwise returns None
+    '''
+    return val if has_value(val) else None
 
 
 def has_value(cell):
@@ -150,13 +164,61 @@ def has_value(cell):
     return True
 
 
-def _has_invalid_char(str_val):
+def archive_folder_contents(folder_path):
+    '''
+    Zips all existing folders into file titled by the curent datetime
+    Writes to archive folder
+    '''
+    file_paths = __get_all_file_paths(folder_path)
 
-    invalid_chars = ['/', '|', '@', '^']
+    now = datetime.now().strftime('%Y-%m-%dT%H.%M.%S')
+    output_filename = f'{now}.zip'
+    archive_folder = f'{folder_path}/archive'
+    with ZipFile(f'{archive_folder}/{output_filename}', 'w') as zip:
+        # writing each file one by one
+        for file in file_paths:
+            zip.write(file, file)
 
-    for char in invalid_chars:
-        if str_val.find(char) != -1:
-            print(f'FAILED: {str_val}')
-            return True
+    cprint(
+        f'Previous contents successfully zipped to: {archive_folder}', 'green')
+    __clear_folder_contents(folder_path)
 
-    return False
+
+def __get_all_file_paths(directory):
+    '''
+    Remturns a list of all file paths in a given directory
+    Except those in the /archive folder
+    '''
+
+    # initializing empty file paths list
+    file_paths = []
+
+    # crawling through directory and subdirectories
+    for root, directories, files in os.walk(directory):
+        for filename in files:
+
+            # join the two strings in order to form the full filepath.
+            filepath = os.path.join(root, filename)
+
+            # ignore archive folder
+            if '/archive' in filepath:
+                continue
+
+            file_paths.append(filepath)
+
+    # returning all file paths
+    return file_paths
+
+
+def __clear_folder_contents(folder_path):
+    '''
+    Clears directory contents
+    Ignores: archive, .DS_Store, .gitkeep
+    Args:
+        folder_path: Path of the folder to clear
+    '''
+
+    for subdir in os.listdir(folder_path):
+        if subdir not in ('.gitkeep', '.DS_Store', 'archive'):
+            subdir_path = f'{folder_path}/{subdir}'
+            shutil.rmtree(subdir_path, ignore_errors=False, onerror=None)
