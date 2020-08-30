@@ -11,7 +11,7 @@ from pandas.errors import EmptyDataError, ParserError
 
 def name_normalize(name):
     '''
-    Replaces "/" characters with "-" to 
+    Replaces "/" characters with "-" to
     '''
     if name is None:
         return name
@@ -54,7 +54,7 @@ def load_specifications(path):
 def get_video_attributes(row):
     '''
     Loads the cell values from the dataframe row into a dictionary
-    Performs a series of checks to ensure values math certain expected criteria (described below) 
+    Performs a series of checks to ensure values math certain expected criteria (described below)
     '''
 
     course = __parse_value(row['Course'])
@@ -120,11 +120,11 @@ def __parse_value(val):
     Returns the value if it passess value check
     Otherwise returns None
     '''
-    return val if _has_value(val) else None
+    return val if __has_value(val) else None
 
 
-def _has_value(cell):
-    """Checks if a cell value from a Pandas dataframe is a valid string
+def __has_value(cell):
+    '''Checks if a cell value from a Pandas dataframe is a valid string
 
     The following are treated as invalid:
     * empty cell (None)
@@ -139,7 +139,7 @@ def _has_value(cell):
 
     Returns:
         Boolean: Whether or not value is valid string
-    """
+    '''
 
     # Falsy values are FALSE
     if not cell:
@@ -183,7 +183,7 @@ def archive_folder_contents(folder_path):
 
 def __get_all_file_paths(directory):
     '''
-    Remturns a list of all file paths in a given directory
+    Returns a list of all file paths in a given directory
     Except those in the /archive folder
     '''
 
