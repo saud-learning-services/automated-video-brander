@@ -6,10 +6,10 @@ from termcolor import cprint
 
 from body.body import Body
 
-from helpers import load_specifications, get_video_attributes, has_value
+from helpers import load_specifications, get_video_attributes
 
 
-def process_body_clips():
+def watermark():
     '''
     ARG: specs (Pandas Dataframe)
     Loops through all the rows in the CSV
@@ -62,7 +62,7 @@ def process_body_clips():
             output_video_file_path = f'{output_folder}/{filename}'
             print(f'FILENAME: {filename}')
             if filename.endswith(".mp4"):
-                if (has_value(watermark)):
+                if (watermark):
                     watermark_path = f'input/watermark/bottom-right/{watermark}'
 
                     if wm_position in ['l', 'L']:
@@ -106,4 +106,4 @@ def __delete_processing_folder():
 
 
 if __name__ == '__main__':
-    process_body_clips()
+    watermark()
