@@ -7,7 +7,6 @@ __pycache__/
 # keep output folder but ignore contents
 output/*
 !output/.gitkeep
-!output/archive
 
 input/tail/*
 !input/tail/.gitkeep
@@ -16,11 +15,7 @@ input/top_slates/*
 !input/top_slates/.gitkeep
 
 input/body/*
-!input/body/.gitkeep
-!input/body/archive
-
-archive/*
-!archive/.gitkeep
+!input/body/.gitkeep]
 
 input/PROCESSED
 
