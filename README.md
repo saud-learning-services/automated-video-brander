@@ -32,14 +32,14 @@ The behaviour of the tool is specified in `specs.csv` in the `/input` folder. Ea
 
 > Columns that requre values for each video have a *
 
-* Course _(COMM 100)_
-* Section _(101)_
-* Instructor _(Dr. Lee)_
-* *Title _(Introduction to Balance Sheets)_
-* *Top Slate _(my-slate.mp4)_
-* Watermark _(sauder-watermark.png)_
-* Watermark Position _(R)_
-* *Source URL _(https://www.link-to-my-raw-unbranded-video.panopto.com)_
+* **Course** _(COMM 100)_
+* **Section** _(101)_
+* **Instructor** _(Dr. Lee)_
+* ***Title** _(Introduction to Balance Sheets)_
+* ***Top Slate** _(my-slate.mp4)_
+* **Watermar**k _(sauder-watermark.png)_
+* **Watermark Position** _(R)_
+* ***Source URL** _(https://www.link-to-my-raw-unbranded-video.panopto.com)_
 
 For our process at Sauder, we have faculty members fill out a google form with all relevant information. This is then manually entered into specs.csv (for now)
 
