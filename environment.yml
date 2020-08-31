@@ -1,14 +1,16 @@
 name: automated_video_branding_tool_env
 channels:
+  - anaconda
   - conda-forge
 dependencies:
+  - pandas
   - ffmpeg-python
   - imagemagick
   - python-dotenv
   - termcolor
-  - moviepy
   - pip
   - pip:
+    - moviepy
     - gizeh
     - opencv-python
     - oauthlib

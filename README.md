@@ -87,6 +87,7 @@ All logic for interfacing with panopto is in `panpto/panopto_interface.py`, exce
 * **Slim down dependencies.** Currently our project uses three video libraries: [ffmpeg-python](https://github.com/kkroening/ffmpeg-python), [moviepy](https://zulko.github.io/moviepy/) and [gizeh](https://github.com/Zulko/gizeh). This was done because initially we didn't know all the functionality we needed, so we used different libraries where necessary. All video processing should be doable with ffmpeg-python therefore we want to make this our only video-editing library.
 * Assuming we do all video transformations using ffmpeg-python, make watermarking and stitching a single step (only multiple because they use different libraries at the moment)
 * Add log file to keep track of success/failure of each video and record error messages
+* Automatically query the google form and conform data to fit `specs.csv` (currently filled out manually)
 
 ## Important Information 
 
