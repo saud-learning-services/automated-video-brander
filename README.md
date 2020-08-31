@@ -1,6 +1,14 @@
 # Sauder Automated Video Branding Tool
 Python application that automates branding post-processiing for educational video content at UBC Sauder.
 
+## Problem to solve
+
+The change to online delivery of classes due to COVID-19 has led to the desire to brand videos used for course content delivery. Video content and branding processes, including an intro, outro, and watermarking of the video content is required. This process, if edited manually for the anticipated hundreds of hours of content, would take a tremendous amount of effort to produce. An automated process is required to ensure the content can be produced in a timely manner. We have identified a process in conjunction with our selected video platform, Panopto, to automate the download, process, and return of branded content.
+
+This process makes use of the Panopto SOAP and RESTful API's to download, brand, and upload the branded content. 
+
+## Solution Process
+
 Run at consistant intervals to support video-automation process where: 
 1. Faculty members at Sauder create and upload single-stream or dual-stream video content to Panopto
 2. Faculty members submit a Google Form specifying what kind of branding treatment they'd like to recieve
