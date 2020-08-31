@@ -57,3 +57,7 @@ def download_videos():
         except RuntimeError as err:
             cprint(err, 'red')
             continue
+
+
+if __name__ == '__main__':
+    download_videos()
