@@ -39,9 +39,9 @@ The behaviour of the tool is specified in `specs.csv` in the `/input` folder. Ea
 * ***Top Slate** _(my-slate.mp4)_
 * **Watermar**k _(sauder-watermark.png)_
 * **Watermark Position** _(R)_
-* ***Source URL** _(https://www.link-to-my-raw-unbranded-video.panopto.com)_
+* ***Source URL** _(https://www.link-to-my-raw-unbranded-video.panopto.com)_ This uses the "Share Link" URL from Panopto 
 
-For our process at Sauder, we have faculty members fill out a google form with all relevant information. This is then manually entered into specs.csv (for now)
+For our process at Sauder, we have faculty members fill out a Google form with all relevant information. This is then manually entered into specs.csv (for now)
 
 ### Additional Inputs
 
