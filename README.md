@@ -1,5 +1,5 @@
 # Sauder Automated Video Branding Tool
-Python application that automates branding post-processiing for educational video content at UBC Sauder.
+Python application that automates branding post-processing for educational video content at UBC Sauder.
 
 ## Problem to solve
 
