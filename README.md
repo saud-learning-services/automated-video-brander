@@ -16,7 +16,7 @@ Run at consistant intervals to support video-automation process where:
 
 ## Status
 
-This project is *still under development*. While the application works, it is far from completed -- there are already performance improvments, architectural changes and refactorings that we are planning. It is being shared publicly due to interest from colleagues and institutions with similar video-content challenges.
+This project is *still under development*. While the application works, it is far from completed -- there are already performance improvements, architectural changes and refactorings that we are planning. It is being shared publicly due to interest from colleagues and institutions with similar video-content challenges.
 
 ## Environment
 
