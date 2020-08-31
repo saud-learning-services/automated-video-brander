@@ -87,14 +87,14 @@ All logic for interfacing with panopto is in `panpto/panopto_interface.py`, exce
 * **Slim down dependencies.** Currently our project uses three video libraries: [ffmpeg-python](https://github.com/kkroening/ffmpeg-python), [moviepy](https://zulko.github.io/moviepy/) and [gizeh](https://github.com/Zulko/gizeh). This was done because initially we didn't know all the functionality we needed, so we used different libraries where necessary. All video processing should be doable with ffmpeg-python therefore we want to make this our only video-editing library.
 * Assuming we do all video transformations using ffmpeg-python, make watermarking and stitching a single step (only multiple because they use different libraries at the moment)
 * Add log file to keep track of success/failure of each video and record error messages
-* Automatically query the google form and conform data to fit `specs.csv` (currently filled out manually)
+* Add connection to web form (currently Google Forms) used to collect requests for branding to automate from request to processing. Error checking, logging, and notification is required to implement.
 
 ## Important Information 
 
 * All videos will be rendered to **1920x1080**
 * `/output` directory contents will be cleared on step 3 and its contents will be zipped in `/ouput/archive` (timestamped)
 * `/input/body` directory contents will be cleared on step 1 and its contents will be zipped in `/input/body/archive` (timestamped)
-* Source clip (specified in Source URL in specs.) should be a single video clip with _approx. 3_ seconds before/after the spaeker speaks
+* Source clip (specified in Source URL in specs.) should be a single video clip with _approx. 3_ seconds before/after the speaker speaks
 * Watermark position defaults to bottom-right. Bottom left only if Watermark Position is **l** (in CSV)
 * Only supports single line titles (titles can not exceed 45 characters)
 * If no slate is specified, the tool will default to Sauder's standard intro slate `sauder_slate.mp4`
