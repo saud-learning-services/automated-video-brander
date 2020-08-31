@@ -9,14 +9,14 @@ This process makes use of the Panopto SOAP and RESTful API's to download, brand,
 
 ## Solution Process
 
-Run at consistant intervals to support video-automation process where: 
+Run at consistent intervals to support video-automation process where: 
 1. Faculty members at Sauder create and upload single-stream or dual-stream video content to Panopto
 2. Faculty members submit a Google Form specifying what kind of branding treatment they'd like to recieve
 3. Within 24 hours, a personalized and branded version of the video is auto-generated and available in the same folder in Panopto.
 
 ## Status
 
-This project is *still under development*. While the application works, it is far from completed -- there are already performance improvements, architectural changes and refactorings that we are planning. It is being shared publicly due to interest from colleagues and institutions with similar video-content challenges.
+This project is *still under development*. While the application works, it is far from completed -- there are already performance improvements, architectural changes, and refactoring planned. It is being shared publicly due to interest from colleagues and institutions with similar video-content challenges.
 
 ## Environment
 
