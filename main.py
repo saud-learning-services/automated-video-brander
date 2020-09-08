@@ -13,8 +13,25 @@ from download_videos import download_videos
 from watermark import watermark
 from stitch import stitch
 from upload_videos import upload_videos
+from google_client.google_form_interface import GoogleFormInterface
+from datetime import datetime
+import logging
 
 if __name__ == '__main__':
+
+    # LOG SETUP
+    now = datetime.now()
+    now_formatted = now.strftime('%m-%d-%Y %H:%M:%S')
+
+    filename = now_formatted
+
+    logging.basicConfig(format='%(asctime)s: %(levelname)s - %(message)s',
+                        filename=f'logs/{filename}.log', level=logging.INFO)
+
+    # 0
+    # Get data from google forms - archive previous spec sheet
+    google = GoogleFormInterface()
+    google.generate_specs()
 
     # 1
     # Downloads all streams of video specified in Source URL column (in specs.csv)

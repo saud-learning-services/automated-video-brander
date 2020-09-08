@@ -9,6 +9,8 @@ dependencies:
   - python-dotenv
   - termcolor
   - pip
+  - gspread
+  - oauth2client
   - pip:
     - moviepy
     - gizeh

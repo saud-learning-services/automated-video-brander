@@ -1,15 +1,15 @@
 import os
+import logging
 import json
 import copy
 import time
 import boto3  # AWS SDK (boto3)
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 import requests
 import youtube_dl
 
-# Modified class from:
-# => https://github.com/Panopto/upload-python-sample/tree/master/simplest
-# Apache-2.0 License
+from termcolor import cprint
 
 # Size of each part of multipart upload.
 # This must be between 5MB and 25MB. Panopto server may fail if the size is more than 25MB.
@@ -74,6 +74,8 @@ class Panopto:
 
         if response.status_code == requests.codes.forbidden:
             print('Forbidden. This may mean token expired. Refresh access token.')
+            logging.error(
+                'Forbidden. This may mean token expired. Refresh access token.')
             self.__setup_or_refresh_access_token()
             return True
 
@@ -271,9 +273,20 @@ class Panopto:
                     '  -- {0} of {1} bytes uploaded'.format(uploaded_bytes, total_bytes))
                 i += 1
 
-        # Copmlete
-        result = s3.complete_multipart_upload(
-            Bucket=bucket, Key=object_key, UploadId=mpu_id, MultipartUpload={"Parts": parts})
+        # Complete
+        try:
+            result = s3.complete_multipart_upload(
+                Bucket=bucket, Key=object_key, UploadId=mpu_id, MultipartUpload={"Parts": parts})
+        except ClientError as err:
+            cprint(err, 'red')
+            cprint('Retrying operation...', 'yellow')
+            try:
+                result = s3.complete_multipart_upload
+            except ClientError as err:
+                cprint(err, 'red')
+                cprint('FAILED -- Tried multipart upload twice')
+                raise RuntimeError(f'Could not upload to {upload_target}')
+
         print('  -- complete called.')
 
     def __finish_upload(self, session_upload):
@@ -283,7 +296,6 @@ class Panopto:
         upload_id = session_upload['ID']
         upload_target = session_upload['UploadTarget']
 
-        print('')
         while True:
             print(
                 'Calling PUT PublicAPI/REST/sessionUpload/{0} endpoint'.format(upload_id))
@@ -292,8 +304,18 @@ class Panopto:
             payload = copy.copy(session_upload)
             payload['State'] = 1  # Upload Completed
             headers = {'content-type': 'application/json'}
-            resp = self.requests_session.put(
-                url=url, json=payload, headers=headers)
+            try:
+                resp = self.requests_session.put(
+                    url=url, json=payload, headers=headers)
+            except Exception as err:
+                # This exception gets triggered if the video takes a long time to upload
+                # Regenerating the token resolves it
+                cprint(err, 'red')
+                cprint(type(err), 'red')
+                logging.warning(err)
+                logging.warning('Video upload timeout. Regenerating token')
+                self.__setup_or_refresh_access_token()
+                continue
             if not self.__inspect_response_is_retry_needed(resp):
                 break
         print('  done')
@@ -319,4 +341,5 @@ class Panopto:
             # original value below was 4
             # I'm changing this to 3 because I don't want to wait for videos to completely process
             if session_upload['State'] == 3:
+                logging.info('Successfully uploaded video!')
                 break

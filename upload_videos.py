@@ -1,4 +1,5 @@
 import os
+import logging
 import datetime
 import codecs
 from termcolor import cprint
@@ -29,6 +30,9 @@ def upload_videos():
             specs = get_video_attributes(row)
         except ValueError:
             cprint('Skipping video...', 'red')
+            attempted_video_title = row['Title']
+            logging.error(
+                'Invalid values in specs. Skipping video: %s, row: %i', attempted_video_title, index)
             continue
 
         course_code = specs['course']
@@ -37,6 +41,9 @@ def upload_videos():
         src_url = specs['src_url']
 
         cprint(f'Starting upload for <row {index}>:', 'yellow')
+        logging.info('Starting UPLOAD for <row %i> | %s - %s',
+                     index, video_title, instructor_name)
+
         print(f'\nVIDEO TITLE: {video_title}')
         print(f'COURSE: {course_code}')
         print(f'INSTRUCTOR NAME: {instructor_name}\n')
@@ -48,6 +55,8 @@ def upload_videos():
                 f'\nThe source URL provided ({src_url}) is not a UBC panopto instance', 'red')
             cprint(
                 f'Skipping upload for video: "{video_title}"...\n', 'red')
+            logging.error(
+                'The source URL provided: "%s" is not a UBC panopto instance. Skipping video: %s', src_url, video_title)
             continue
 
         # delivery id is in last 36 characters of URL
@@ -69,6 +78,9 @@ def upload_videos():
             __create_manifest(local_folder_path, manifest_title)
         except RuntimeError as err:
             cprint('\nERROR: Could not create manifest', 'red')
+            logging.error(
+                'Could not create manifest for video: %s. Skipping...', video_title)
+            logging.error(err)
             cprint(err, 'red')
             print('')
             continue
@@ -87,6 +99,8 @@ def upload_videos():
             cprint(
                 f'\nCould not find file for upload: {local_folder_path}', 'red')
             cprint('Skipping video...\n', 'red')
+            logging.error(
+                'Could not find file for upload: %s. Skipping video: %s...', local_folder_path, video_title)
 
 
 def __create_manifest(target_folder, video_title):
