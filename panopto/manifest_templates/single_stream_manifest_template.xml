@@ -3,7 +3,7 @@
   <Title>{Title}</Title>
   <Description>{Description}</Description>
   <Date>{Date}</Date>
-  <ThumbnailTime>PT5S</ThumbnailTime>
+  <ThumbnailTime>PT3S</ThumbnailTime>
   <Videos>
     <Video>
       <Start>PT0S</Start>

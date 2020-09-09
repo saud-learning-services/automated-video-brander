@@ -1,4 +1,5 @@
 import os
+import logging
 import ffmpeg
 import cv2
 from ffprobe import FFProbe
@@ -47,12 +48,15 @@ class Body:
 
             # 3. FITTING TO 1920x1080 (16:9)
             # the smaller the  number, the larger the width/height
-            difference_in_height = 1080 - height
-            difference_in_width = 1920 - width
+            # difference_in_height = 1080 - height
+            # difference_in_width = 1920 - width
+
+            height_ratio = 1080 / height
+            width_ratio = 1920 / width
 
             raw = ffmpeg.input(self.input_src)
 
-            if difference_in_width <= difference_in_height:
+            if height_ratio >= width_ratio:
                 # fit width
                 output_width = 1920
                 output_height = -1  # -1 maintains aspect ratio
@@ -70,7 +74,6 @@ class Body:
                 processing = (
                     raw
                     .filter('scale', width=output_width, height=output_height)
-                    # .filter('pad', width=1920, height=1080, x=x_offset_for_padding, y=y_offset_for_padding)
                     .filter('pad', width=1920, height=1080, x='1920 - in_w / 2')
                     .overlay(overlay_file)
                 )
@@ -90,6 +93,7 @@ class Body:
             processing.run()
 
         except Exception as err:
+            logging.error(err)
             print(err)
 
         return self.output_src

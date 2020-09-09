@@ -7,6 +7,7 @@ Author: Marko Prodanovic
 
 # Standard imports
 import os
+import logging
 
 # Moviepy (primary library)
 # Docs: https://zulko.github.io/moviepy/index.html
@@ -41,6 +42,7 @@ def stitch():
     specs = load_specifications(root + '/input')
 
     cprint('Archiving & clearing output folder...', 'yellow')
+    logging.info('Archiving & clearing output folder...')
     archive_folder_contents('output')
 
     for index, row in specs.iterrows():
@@ -51,6 +53,9 @@ def stitch():
             specs = get_video_attributes(row)
         except ValueError:
             cprint('Skipping video...', 'red')
+            attempted_video_title = row['Title']
+            logging.error(
+                'Invalid values in specs. Skipping video: %s, row: %i', attempted_video_title, index)
             continue
 
         course = specs['course']
@@ -60,6 +65,8 @@ def stitch():
         top_slate = specs['top_slate']
 
         cprint(f'Starting top/tail stitching for <row {index}>:', 'yellow')
+        logging.info('Starting TOP/TAIL STITCHING for <row %i> | %s - %s',
+                     index, title, instructor)
         print(f'\nVIDEO TITLE: {title}')
         print(f'COURSE: {course}')
         print(f'INSTRUCTOR NAME: {instructor}\n')
@@ -92,6 +99,8 @@ def stitch():
             except OSError:
                 cprint(
                     f'Could not find specifiied clip: "{clip_name}" in folder: ', 'red')
+                logging.error(
+                    'Could not find specifiied clip: "%s" in folder: "%s". Skipping video...', clip_name, input_folder)
                 cprint(input_folder, 'yellow')
                 cprint('Skipping video...', 'red')
                 continue
@@ -115,6 +124,7 @@ def stitch():
                                            audio_codec='aac')
                 cprint('\nSUCCESS', 'green')
             except Exception as error:
+                logging.error(error)
                 cprint(error, 'red')
                 continue
 

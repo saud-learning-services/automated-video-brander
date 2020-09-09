@@ -1,5 +1,6 @@
 import os
 import shutil
+import logging
 from shutil import copyfile
 
 from termcolor import cprint
@@ -19,13 +20,17 @@ def watermark():
     '''
 
     cprint('Deleting "PROCESSING" folder...', 'yellow')
+    logging.info('Deleting "PROCESSING" folder...')
     __delete_processing_folder()
 
     cprint('Creating empty "PROCESSING" folder', 'yellow')
+    logging.info('Creating empty "PROCESSING" folder')
     __make_processing_folder()
 
     root = os.path.dirname(os.path.abspath(__file__))
     specs = load_specifications(root + '/input')
+
+    print(root)
 
     for index, row in specs.iterrows():
         print('\n------------------------------------------\n')
@@ -34,6 +39,9 @@ def watermark():
             specs = get_video_attributes(row)
         except ValueError:
             cprint('Skipping video...', 'red')
+            attempted_video_title = row['Title']
+            logging.error(
+                'Invalid values in specs. Skipping video: %s, row: %i', attempted_video_title, index)
             continue
 
         course = specs['course']
@@ -43,6 +51,8 @@ def watermark():
         wm_position = specs['wm_pos']
 
         cprint(f'Starting watermarking for <row {index}>:', 'yellow')
+        logging.info('Starting WATERMARKING for <row %i> | %s - %s',
+                     index, title, instructor)
         print(f'\nVIDEO TITLE: {title}')
         print(f'COURSE: {course}')
         print(f'INSTRUCTOR NAME: {instructor}\n')
@@ -75,11 +85,14 @@ def watermark():
                 else:
                     cprint(
                         'Clip does not need watermark, moving raw clip to PROCESSING folder', 'yellow')
+                    logging.warning(
+                        'Clip does not need watermark, moving raw clip to PROCESSING folder')
                     copyfile(
                         input_video_file_path, output_video_file_path)
             else:
-                cprint(
-                    f'Skipping {filename}, non-mp4 file in: {input_folder}')
+                cprint(f'Skipping {filename}, non-mp4 file in: {input_folder}')
+                logging.error(
+                    'Skipping %s, non-mp4 file in: %s', filename, input_folder)
                 continue
 
 

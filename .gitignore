@@ -8,6 +8,12 @@ __pycache__/
 output/*
 !output/.gitkeep
 
+logs/*
+!logs/.gitkeep
+
+specs_archive/*
+!specs_archive/.gitkeep
+
 input/tail/*
 !input/tail/.gitkeep
 
@@ -23,3 +29,9 @@ input/watermark/*
 !input/watermark/.gitkeep
 
 ignore
+
+secrets.json
+
+LastRun.txt
+
+log.py
