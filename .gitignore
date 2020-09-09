@@ -11,9 +11,6 @@ output/*
 logs/*
 !logs/.gitkeep
 
-specs_archive/*
-!specs_archive/.gitkeep
-
 input/tail/*
 !input/tail/.gitkeep
 
@@ -21,7 +18,10 @@ input/top_slates/*
 !input/top_slates/.gitkeep
 
 input/body/*
-!input/body/.gitkeep]
+!input/body/.gitkeep
+
+input/specs_archive/*
+!input/specs_archive/.gitkeep
 
 input/PROCESSED
 
