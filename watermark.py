@@ -44,6 +44,7 @@ def watermark():
                 'Invalid values in specs. Skipping video: %s, row: %i', attempted_video_title, index)
             continue
 
+        video_id = specs['id']
         course = specs['course']
         title = specs['title']
         instructor = specs['instructor']
@@ -55,14 +56,15 @@ def watermark():
                      index, title, instructor)
         print(f'\nVIDEO TITLE: {title}')
         print(f'COURSE: {course}')
-        print(f'INSTRUCTOR NAME: {instructor}\n')
+        print(f'INSTRUCTOR NAME: {instructor}')
+        print(f'UNIQUE ID: {video_id}\n')
 
-        input_folder = f'{root}/input/body/{title}_{instructor}'
-        output_folder = f'{root}/input/body/PROCESSED/{title}_{instructor}'
+        input_folder = f'{root}/input/body/{title}_{instructor}_{video_id}'
+        output_folder = f'{root}/input/body/PROCESSED/{title}_{instructor}_{video_id}'
 
         if not instructor:
-            input_folder = f'{root}/input/body/{title}'
-            output_folder = f'{root}/input/body/PROCESSED/{title}'
+            input_folder = f'{root}/input/body/{title}_{video_id}'
+            output_folder = f'{root}/input/body/PROCESSED/{title}_{video_id}'
 
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)

@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 import pandas as pd
 from termcolor import cprint
+from uuid import uuid1
 
 
 def requires_more_edits(video):
@@ -47,7 +48,10 @@ def translate_video_properties(video):
     instructor_name = str(
         video['Preferred Instructor(s) Name(s) (Optional. Maximum characters: 50)'])
 
+    uid = str(uuid1())
+
     return {
+        'id': uid,
         'course_code': course_code,
         'section_number': section_number,
         'title': title,
