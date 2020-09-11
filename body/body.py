@@ -36,12 +36,17 @@ class Body:
             width = vid.get(cv2.CAP_PROP_FRAME_WIDTH)
 
             # 2. Check if video has audio using FFProbe
-            metadata = FFProbe(self.input_src)
+            try:
+                metadata = FFProbe(self.input_src)
+            except Exception as err:
+                print(err)
+                print('THIS IS YOUR PROBLEM')
             cprint(metadata.streams, 'green')
 
             has_audio = False
 
             # iterate through streams to check if there is an audio stream
+            print('checkpoint 3')
             for stream in metadata.streams:
                 if stream.is_audio():
                     has_audio = True

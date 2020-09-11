@@ -72,7 +72,6 @@ def watermark():
         for filename in os.listdir(input_folder):
             input_video_file_path = f'{input_folder}/{filename}'
             output_video_file_path = f'{output_folder}/{filename}'
-            print(f'FILENAME: {filename}')
             if filename.endswith(".mp4"):
                 if (watermark):
                     watermark_path = f'input/watermark/bottom-right/{watermark}'
