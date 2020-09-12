@@ -40,7 +40,7 @@ class GoogleFormInterface:
         '''
 
         # Create the specs DataFrame with necessary columns
-        columns = ['Course', 'Section', 'Instructor', 'Title',
+        columns = ['Id', 'Course', 'Section', 'Instructor', 'Title',
                    'Top Slate', 'Watermark', 'Watermark Position', 'Source URL']
         specs = pd.DataFrame(columns=columns)
 
@@ -62,6 +62,7 @@ class GoogleFormInterface:
             props = translate_video_properties(video)
 
             data = {
+                'Id': props['id'],
                 'Course': props['course_code'],
                 'Section': props['section_number'],
                 'Instructor': props['instructor'],

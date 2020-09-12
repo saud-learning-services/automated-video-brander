@@ -58,6 +58,7 @@ def stitch():
                 'Invalid values in specs. Skipping video: %s, row: %i', attempted_video_title, index)
             continue
 
+        video_id = specs['id']
         course = specs['course']
         section = specs['section']
         instructor = specs['instructor']
@@ -69,7 +70,8 @@ def stitch():
                      index, title, instructor)
         print(f'\nVIDEO TITLE: {title}')
         print(f'COURSE: {course}')
-        print(f'INSTRUCTOR NAME: {instructor}\n')
+        print(f'INSTRUCTOR NAME: {instructor}')
+        print(f'UNIQUE ID: {video_id}\n')
 
         top = Top(top_slate=top_slate, title=title, course=course,
                   section=section, instructor=instructor)
@@ -79,12 +81,12 @@ def stitch():
         tail = VideoFileClip(
             'input/tail/tail.mp4').fx(audio_fadein, duration=1.5)
 
-        input_folder = f'input/body/PROCESSED/{title}_{instructor}'
-        output_folder = f'output/{title}_{instructor}'
+        input_folder = f'input/body/PROCESSED/{title}_{instructor}_{video_id}'
+        output_folder = f'output/{title}_{instructor}_{video_id}'
 
         if not instructor:
-            input_folder = f'input/body/PROCESSED/{title}'
-            output_folder = f'output/{title}'
+            input_folder = f'input/body/PROCESSED/{title}_{video_id}'
+            output_folder = f'output/{title}_{video_id}'
 
         for clip_name in os.listdir(input_folder):
             try:

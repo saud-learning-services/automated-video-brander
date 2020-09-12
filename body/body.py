@@ -2,7 +2,7 @@ import os
 import logging
 import ffmpeg
 import cv2
-from ffprobe import FFProbe
+# from ffprobe import FFProbe
 from termcolor import cprint
 
 
@@ -36,15 +36,21 @@ class Body:
             width = vid.get(cv2.CAP_PROP_FRAME_WIDTH)
 
             # 2. Check if video has audio using FFProbe
-            metadata = FFProbe(self.input_src)
-            cprint(metadata.streams, 'green')
+            # metadata = FFProbe(self.input_src)  # ERROR THROWN HERE
+            # cprint(metadata.streams, 'green')
+
+            p = ffmpeg.probe(self.input_src, select_streams='a')
 
             has_audio = False
 
+            # If p['streams'] is not empty, clip has an audio stream
+            if p['streams']:
+                has_audio = True
+
             # iterate through streams to check if there is an audio stream
-            for stream in metadata.streams:
-                if stream.is_audio():
-                    has_audio = True
+            # for stream in metadata.streams:
+            #     if stream.is_audio():
+            #         has_audio = True
 
             # 3. FITTING TO 1920x1080 (16:9)
             # the smaller the  number, the larger the width/height

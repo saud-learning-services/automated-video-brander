@@ -35,6 +35,7 @@ def upload_videos():
                 'Invalid values in specs. Skipping video: %s, row: %i', attempted_video_title, index)
             continue
 
+        video_id = specs['id']
         course_code = specs['course']
         video_title = specs['title']
         instructor_name = specs['instructor']
@@ -46,7 +47,8 @@ def upload_videos():
 
         print(f'\nVIDEO TITLE: {video_title}')
         print(f'COURSE: {course_code}')
-        print(f'INSTRUCTOR NAME: {instructor_name}\n')
+        print(f'INSTRUCTOR NAME: {instructor_name}')
+        print(f'UNIQUE ID: {video_id}\n')
 
         # URL must begin with 'https://ubc.ca.panopto.com'
         panopto_instance = src_url[:27]
@@ -66,10 +68,10 @@ def upload_videos():
             delivery_id)
 
         # folder containing the streams to upload
-        local_folder_path = f'output/{video_title}_{instructor_name}'
+        local_folder_path = f'output/{video_title}_{instructor_name}_{video_id}'
 
         if not instructor_name:
-            local_folder_path = f'output/{video_title}'
+            local_folder_path = f'output/{video_title}_{video_id}'
 
         # manifest cannot have '&' character in it
 

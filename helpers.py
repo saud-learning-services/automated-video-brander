@@ -37,7 +37,7 @@ def load_specifications(path):
         cprint('\nERROR: Ensure specs.csv has data.', 'red')
         sys.exit()
 
-    expected_cols = {'Course', 'Section', 'Instructor', 'Title',
+    expected_cols = {'Id', 'Course', 'Section', 'Instructor', 'Title',
                      'Top Slate', 'Watermark', 'Watermark Position', 'Source URL'}
 
     actual_cols = set(list(specs))
@@ -57,6 +57,8 @@ def get_video_attributes(row):
     Performs a series of checks to ensure values math certain expected criteria (described below)
     '''
 
+    # casting uid to string regardless
+    uid = __parse_value(str(row['Id']))
     course = __parse_value(row['Course'])
     section = __parse_value(row['Section'])
     instructor = __parse_value(row['Instructor'])
@@ -104,6 +106,7 @@ def get_video_attributes(row):
         raise ValueError()
 
     return {
+        'id': uid,
         'course': course,
         'section': section,
         'instructor': instructor,

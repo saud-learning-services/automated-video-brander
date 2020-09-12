@@ -1,4 +1,4 @@
-name: automated_video_branding_tool_env
+name: automated-editor
 channels:
   - anaconda
   - conda-forge
