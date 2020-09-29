@@ -36,3 +36,5 @@ secrets.txt
 LastRun.txt
 
 log.py
+
+input/specs.csv
