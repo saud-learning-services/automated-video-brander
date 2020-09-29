@@ -37,8 +37,8 @@ def load_specifications(path):
         cprint('\nERROR: Ensure specs.csv has data.', 'red')
         sys.exit()
 
-    expected_cols = {'Course', 'Section', 'Instructor', 'Title',
-                     'Top Slate', 'Watermark', 'Watermark Position', 'Source URL'}
+    expected_cols = {'Id', 'Course', 'Section', 'Instructor', 'Title',
+                     'Top Slate', 'Tail', 'Watermark', 'Watermark Position', 'Source URL'}
 
     actual_cols = set(list(specs))
 
@@ -57,11 +57,14 @@ def get_video_attributes(row):
     Performs a series of checks to ensure values math certain expected criteria (described below)
     '''
 
+    # casting uid to string regardless
+    uid = __parse_value(str(row['Id']))
     course = __parse_value(row['Course'])
     section = __parse_value(row['Section'])
     instructor = __parse_value(row['Instructor'])
     title = __parse_value(row['Title'])
     top_slate = __parse_value(row['Top Slate'])
+    tail = __parse_value(row['Tail'])
     watermark = __parse_value(row['Watermark'])
     wm_pos = __parse_value(row['Watermark Position'])
     src_url = __parse_value(row['Source URL'])
@@ -104,11 +107,13 @@ def get_video_attributes(row):
         raise ValueError()
 
     return {
+        'id': uid,
         'course': course,
         'section': section,
         'instructor': instructor,
         'title': title,
         'top_slate': top_slate,
+        'tail': tail,
         'watermark': watermark,
         'src_url': src_url,
         'wm_pos': wm_pos

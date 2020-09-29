@@ -1,7 +1,6 @@
 import os
 import shutil
 import logging
-from shutil import copyfile
 
 from termcolor import cprint
 
@@ -44,6 +43,7 @@ def watermark():
                 'Invalid values in specs. Skipping video: %s, row: %i', attempted_video_title, index)
             continue
 
+        video_id = specs['id']
         course = specs['course']
         title = specs['title']
         instructor = specs['instructor']
@@ -55,14 +55,15 @@ def watermark():
                      index, title, instructor)
         print(f'\nVIDEO TITLE: {title}')
         print(f'COURSE: {course}')
-        print(f'INSTRUCTOR NAME: {instructor}\n')
+        print(f'INSTRUCTOR NAME: {instructor}')
+        print(f'UNIQUE ID: {video_id}\n')
 
-        input_folder = f'{root}/input/body/{title}_{instructor}'
-        output_folder = f'{root}/input/body/PROCESSED/{title}_{instructor}'
+        input_folder = f'{root}/input/body/{title}_{instructor}_{video_id}'
+        output_folder = f'{root}/input/body/PROCESSED/{title}_{instructor}_{video_id}'
 
         if not instructor:
-            input_folder = f'{root}/input/body/{title}'
-            output_folder = f'{root}/input/body/PROCESSED/{title}'
+            input_folder = f'{root}/input/body/{title}_{video_id}'
+            output_folder = f'{root}/input/body/PROCESSED/{title}_{video_id}'
 
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
@@ -70,7 +71,6 @@ def watermark():
         for filename in os.listdir(input_folder):
             input_video_file_path = f'{input_folder}/{filename}'
             output_video_file_path = f'{output_folder}/{filename}'
-            print(f'FILENAME: {filename}')
             if filename.endswith(".mp4"):
                 if (watermark):
                     watermark_path = f'input/watermark/bottom-right/{watermark}'
@@ -81,14 +81,20 @@ def watermark():
                     body_clip = Body(
                         filename, input_video_file_path, output_video_file_path, watermark_path)
 
-                    body_clip.process_video()
+                    body_clip.process_video(with_watermark=True)
                 else:
                     cprint(
-                        'Clip does not need watermark, moving raw clip to PROCESSING folder', 'yellow')
+                        'Clip does not need watermark, conforming to 1920x1080 and moving to PROCESSING folder', 'yellow')
                     logging.warning(
-                        'Clip does not need watermark, moving raw clip to PROCESSING folder')
-                    copyfile(
-                        input_video_file_path, output_video_file_path)
+                        'Clip does not need watermark, conforming to 1920x1080 and moving to PROCESSING folder')
+                    body_clip = (
+                        Body(body_file_name=filename,
+                             input_video_file_path=input_video_file_path,
+                             output_video_file_path=output_video_file_path,
+                             watermark_path=None)
+                    )
+                    body_clip.process_video(with_watermark=False)
+                    # copyfile(input_video_file_path, output_video_file_path)
             else:
                 cprint(f'Skipping {filename}, non-mp4 file in: {input_folder}')
                 logging.error(

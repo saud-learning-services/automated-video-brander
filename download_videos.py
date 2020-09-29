@@ -37,6 +37,7 @@ def download_videos():
                 'Invalid values in specs. Skipping video: %s, row: %i', attempted_video_title, index)
             continue
 
+        video_id = specs['id']
         course = specs['course']
         title = specs['title']
         instructor = specs['instructor']
@@ -47,15 +48,16 @@ def download_videos():
                      index, title, instructor)
         print(f'\nVIDEO TITLE: {title}')
         print(f'COURSE: {course}')
-        print(f'INSTRUCTOR NAME: {instructor}\n')
+        print(f'INSTRUCTOR NAME: {instructor}')
+        print(f'UNIQUE ID: {video_id}\n')
 
         # filename = f'{title}_{instructor}.mp4'
 
-        output_folder = f'{root}/input/body/{title}_{instructor}'
+        output_folder = f'{root}/input/body/{title}_{instructor}_{video_id}'
 
         if not instructor:
             # filepath if no instructor specified
-            output_folder = f'{root}/input/body/{title}'
+            output_folder = f'{root}/input/body/{title}_{video_id}'
 
         delivery_id = src_url[-36:]
 
