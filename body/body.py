@@ -19,12 +19,11 @@ class Body:
 
     root = os.path.dirname(os.path.abspath(__file__))
 
-    def process_video(self):
+    def process_video(self, with_watermark):
         """
         Renders a video to temporary working (PROCESSED) folder that consists of body overlayed with watermark. Videos rendered with ffmpeg-python (way faster than moviepy)
         """
 
-        overlay_file = ffmpeg.input(self.watermark)
         print('INPUT FILE: ' + self.input_src)
         print('OUTPUT PATH: ' + self.output_src)
 
@@ -47,16 +46,6 @@ class Body:
             if p['streams']:
                 has_audio = True
 
-            # iterate through streams to check if there is an audio stream
-            # for stream in metadata.streams:
-            #     if stream.is_audio():
-            #         has_audio = True
-
-            # 3. FITTING TO 1920x1080 (16:9)
-            # the smaller the  number, the larger the width/height
-            # difference_in_height = 1080 - height
-            # difference_in_width = 1920 - width
-
             height_ratio = 1080 / height
             width_ratio = 1920 / width
 
@@ -70,7 +59,7 @@ class Body:
                     raw
                     .filter('scale', width=output_width, height=output_height)
                     .filter('pad', width=1920, height=1080, y='1080 - in_h / 2')
-                    .overlay(overlay_file)
+                    # .overlay(overlay_file)
                 )
             else:
                 # fit height
@@ -81,6 +70,13 @@ class Body:
                     raw
                     .filter('scale', width=output_width, height=output_height)
                     .filter('pad', width=1920, height=1080, x='1920 - in_w / 2')
+                    # .overlay(overlay_file)
+                )
+
+            if with_watermark:
+                overlay_file = ffmpeg.input(self.watermark)
+                processing = (
+                    processing
                     .overlay(overlay_file)
                 )
 

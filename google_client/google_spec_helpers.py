@@ -50,6 +50,16 @@ def translate_video_properties(video):
 
     uid = str(uuid1())
 
+    # ** WORKAROUND SOLUTION FOR GENERIC UBC BRANDING **
+
+    top_slate = 'sauder_slate.mp4'
+    tail = 'sauder_tail.mp4'
+
+    if watermark == 'UBC':
+        watermark = 'ubc.png'
+        top_slate = 'ubc_slate.mp4'
+        tail = 'ubc_tail.mp4'
+
     return {
         'id': uid,
         'course_code': course_code,
@@ -57,6 +67,8 @@ def translate_video_properties(video):
         'title': title,
         'instructor': instructor_name,
         'watermark': watermark,
+        'top_slate': top_slate,
+        'tail': tail,
         'wm_pos': wm_location,
         'src_url': src_url
     }

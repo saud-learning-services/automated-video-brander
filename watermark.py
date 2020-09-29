@@ -1,7 +1,6 @@
 import os
 import shutil
 import logging
-from shutil import copyfile
 
 from termcolor import cprint
 
@@ -82,14 +81,20 @@ def watermark():
                     body_clip = Body(
                         filename, input_video_file_path, output_video_file_path, watermark_path)
 
-                    body_clip.process_video()
+                    body_clip.process_video(with_watermark=True)
                 else:
                     cprint(
-                        'Clip does not need watermark, moving raw clip to PROCESSING folder', 'yellow')
+                        'Clip does not need watermark, conforming to 1920x1080 and moving to PROCESSING folder', 'yellow')
                     logging.warning(
-                        'Clip does not need watermark, moving raw clip to PROCESSING folder')
-                    copyfile(
-                        input_video_file_path, output_video_file_path)
+                        'Clip does not need watermark, conforming to 1920x1080 and moving to PROCESSING folder')
+                    body_clip = (
+                        Body(body_file_name=filename,
+                             input_video_file_path=input_video_file_path,
+                             output_video_file_path=output_video_file_path,
+                             watermark_path=None)
+                    )
+                    body_clip.process_video(with_watermark=False)
+                    # copyfile(input_video_file_path, output_video_file_path)
             else:
                 cprint(f'Skipping {filename}, non-mp4 file in: {input_folder}')
                 logging.error(

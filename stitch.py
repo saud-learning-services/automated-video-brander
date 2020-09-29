@@ -63,6 +63,7 @@ def stitch():
         section = specs['section']
         instructor = specs['instructor']
         title = specs['title']
+        tail = specs['tail']
         top_slate = specs['top_slate']
 
         cprint(f'Starting top/tail stitching for <row {index}>:', 'yellow')
@@ -77,9 +78,8 @@ def stitch():
                   section=section, instructor=instructor)
         top_rendered = top.get_video()
 
-        # same tail for all videos
         tail = VideoFileClip(
-            'input/tail/tail.mp4').fx(audio_fadein, duration=1.5)
+            f'input/tail/{tail}').fx(audio_fadein, duration=1.5)
 
         input_folder = f'input/body/PROCESSED/{title}_{instructor}_{video_id}'
         output_folder = f'output/{title}_{instructor}_{video_id}'

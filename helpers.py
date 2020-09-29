@@ -38,7 +38,7 @@ def load_specifications(path):
         sys.exit()
 
     expected_cols = {'Id', 'Course', 'Section', 'Instructor', 'Title',
-                     'Top Slate', 'Watermark', 'Watermark Position', 'Source URL'}
+                     'Top Slate', 'Tail', 'Watermark', 'Watermark Position', 'Source URL'}
 
     actual_cols = set(list(specs))
 
@@ -64,6 +64,7 @@ def get_video_attributes(row):
     instructor = __parse_value(row['Instructor'])
     title = __parse_value(row['Title'])
     top_slate = __parse_value(row['Top Slate'])
+    tail = __parse_value(row['Tail'])
     watermark = __parse_value(row['Watermark'])
     wm_pos = __parse_value(row['Watermark Position'])
     src_url = __parse_value(row['Source URL'])
@@ -112,6 +113,7 @@ def get_video_attributes(row):
         'instructor': instructor,
         'title': title,
         'top_slate': top_slate,
+        'tail': tail,
         'watermark': watermark,
         'src_url': src_url,
         'wm_pos': wm_pos
