@@ -41,7 +41,7 @@ class GoogleFormInterface:
 
         # Create the specs DataFrame with necessary columns
         columns = ['Id', 'Course', 'Section', 'Instructor', 'Title',
-                   'Top Slate', 'Watermark', 'Watermark Position', 'Source URL']
+                   'Top Slate', 'Tail', 'Watermark', 'Watermark Position', 'Source URL']
         specs = pd.DataFrame(columns=columns)
 
         # Load the google-form data as DataFrame
@@ -67,7 +67,8 @@ class GoogleFormInterface:
                 'Section': props['section_number'],
                 'Instructor': props['instructor'],
                 'Title': props['title'],
-                'Top Slate': 'sauder_slate.mp4',
+                'Top Slate': props['top_slate'],
+                'Tail': props['tail'],
                 'Watermark': props['watermark'],
                 'Watermark Position': props['wm_pos'],
                 'Source URL': props['src_url']

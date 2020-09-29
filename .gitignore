@@ -31,6 +31,7 @@ input/watermark/*
 ignore
 
 secrets.json
+secrets.txt
 
 LastRun.txt
 

@@ -70,8 +70,18 @@ class Top:
         surface = gz.Surface(1920, 1080)
 
         # all tops need at least a title
+
+        # ** GENERIC UBC BRANDING WORKAROUND **
+
+        if self.top_slate == 'ubc_slate.mp4':
+            primary_fill = (0.047,0.14,0.27)
+            secondary_fill = (0,0.65,0.88)
+        else:
+            primary_fill = (0, 0.13, 0.27)
+            secondary_fill = (0.47, 0.75, 0.26)
+
         title = gz.text(self.title, fontsize=90, fontfamily='WhitneyHTF-SemiBoldCondensed',
-                        fill=(0, 0.13, 0.27), xy=(960, 490))
+                        fill=primary_fill, xy=(960, 490))
 
         text_lines = [title]
 
@@ -82,13 +92,13 @@ class Top:
                 codes = self.course
 
             codes_line = gz.text(codes, fontsize=40, fontfamily='WhitneyHTF',
-                                 fill=(0, 0.13, 0.27), xy=(960, 410))
+                                 fill=primary_fill, xy=(960, 410))
 
             text_lines.append(codes_line)
 
         if self.instructor is not None:
             instructor = gz.text(self.instructor, fontsize=65, fontfamily='WhitneyHTF-SemiBoldCondensed',
-                                 fill=(0.47, 0.75, 0.26), xy=(960, 600))
+                                 fill=secondary_fill, xy=(960, 600))
             text_lines.append(instructor)
 
         for line in text_lines:
