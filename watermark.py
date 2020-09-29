@@ -1,7 +1,6 @@
 import os
 import shutil
 import logging
-from shutil import copyfile
 
 from termcolor import cprint
 
