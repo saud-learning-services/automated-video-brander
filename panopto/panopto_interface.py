@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import requests
 import youtube_dl
 
+import pprint as pp
+
 from termcolor import cprint
 
 # Size of each part of multipart upload.
@@ -116,6 +118,7 @@ class Panopto:
                 f'Download response came with message: {message}\nCheck ASPXAUTH token.')
 
         streams = delivery_info['Delivery']['Streams']
+        print(streams)
         for stream in streams:
             if stream['StreamType'] == 1:
                 filename = 'primary.mp4'
@@ -130,6 +133,7 @@ class Panopto:
                 "outtmpl": dest_filename,
                 "quiet": True
             }
+            print(stream['StreamUrl'])
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([stream['StreamUrl']])
 
@@ -139,12 +143,45 @@ class Panopto:
         '''
         while True:
             url = 'https://{0}/Panopto/api/v1/sessions/{1}'.format(
-
                 self.server, session_id)
             resp = self.requests_session.get(url=url)
             if self.__inspect_response_is_retry_needed(resp):
                 continue
             data = resp.json()
+            break
+        return data
+
+    def get_child_folders(self, folder_id):
+        while True:
+            url = 'https://{0}/Panopto/api/v1/folders/{1}/children'.format(
+                self.server, folder_id)
+            resp = self.requests_session.get(url=url)
+            if self.__inspect_response_is_retry_needed(resp):
+                continue
+            data = resp.json()
+            break
+        return data
+
+    def get_sessions(self, folder_id):
+        page_number = 0
+        data = []
+        while True:
+            url = 'https://{0}/Panopto/api/v1/folders/{1}/sessions'.format(
+                self.server, folder_id)
+            resp = self.requests_session.get(
+                url=url, params={'pageNumber': str(page_number)})
+            if self.__inspect_response_is_retry_needed(resp):
+                continue
+            print('PAGE NUMBER ' + str(page_number))
+            print('STATUS CODE ' + str(resp.status_code))
+            # analyze response for data coming back
+            if resp.status_code == 200:
+                data_chunk = resp.json()
+                print('LENGTH: ' + str(len(data_chunk['Results'])))
+                if len(data_chunk['Results']) > 0:
+                    data = data + data_chunk['Results']
+                    page_number += 1
+                    continue
             break
         return data
 

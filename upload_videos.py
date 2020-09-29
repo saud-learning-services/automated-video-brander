@@ -75,7 +75,8 @@ def upload_videos():
 
         # manifest cannot have '&' character in it
 
-        manifest_title = f'{__normalize_title(video_title)}_branded'
+        # manifest_title = f'{__normalize_title(video_title)}_branded'
+        manifest_title = f'{__normalize_title(video_title)}'
         try:
             __create_manifest(local_folder_path, manifest_title)
         except RuntimeError as err:
@@ -125,7 +126,7 @@ def __create_single_stream_manifest(target_folder, title):
         template = fr.read()
     content = template\
         .replace('{Title}', title)\
-        .replace('{Description}', 'This video was processed by the Sauder Automated Video Branding Tool')\
+        .replace('{Description}', 'Migrated from old Sauder Learning Services Panopto server')\
         .replace('{Filename}', 'primary.mp4')\
         .replace('{Date}', datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f-00:00'))
     with codecs.open(f'{target_folder}/single_stream_manifest.xml', 'w', 'utf-8') as fw:

@@ -26,6 +26,7 @@ def load_specifications(path):
     '''
     try:
         specs = pd.read_csv(path + '/specs.csv', dtype={'Section': 'str'})
+        print(specs.head(5))
     except IOError as error:
         cprint('\nError loading CSV:', 'red')
         cprint(f'{error}\n', 'red', attrs=['dark'])
@@ -37,8 +38,9 @@ def load_specifications(path):
         cprint('\nERROR: Ensure specs.csv has data.', 'red')
         sys.exit()
 
+    # TODO Fix this when you're done hacking your own project
     expected_cols = {'Id', 'Course', 'Section', 'Instructor', 'Title',
-                     'Top Slate', 'Watermark', 'Watermark Position', 'Source URL'}
+                     'Top Slate', 'Watermark', 'Watermark Position', 'Source URL', 'Source Folder'}
 
     actual_cols = set(list(specs))
 
@@ -46,6 +48,7 @@ def load_specifications(path):
     if expected_cols != actual_cols:
         cprint('\nERROR: Missing or incorrect columns in specs.csv', 'red')
         cprint(f'Expected columns: {expected_cols}\n')
+        cprint(f'Actual columns: {actual_cols}\n')
         sys.exit()
 
     return specs
@@ -90,9 +93,10 @@ def get_video_attributes(row):
         cprint('\nERROR: Must include value for slate that ends in .mp4', 'red')
         raise ValueError()
 
-    if len(title) > 45:
-        cprint('\nERROR: Does not support titles with more than 45 characters', 'red')
-        raise ValueError()
+    # TODO Bring this back
+    # if len(title) > 45:
+    #     cprint('\nERROR: Does not support titles with more than 45 characters', 'red')
+    #     raise ValueError()
 
     # instructor name(s) must not exceed 50 characters
     if instructor is not None and len(instructor) > 50:
