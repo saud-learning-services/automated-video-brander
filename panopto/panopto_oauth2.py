@@ -19,6 +19,14 @@ DEFAULT_SCOPE = ('openid', 'api')
 
 
 class PanoptoOAuth2():
+    '''
+    Handles Panopto Authentication (0Auth2)
+
+    MODIFIED VERSION OF: https://github.com/Panopto/upload-python-sample/tree/master/simplest
+    Contributors (GitHub): Hiroshi Ohno, Zac Rumford
+    Apache-2.0 License
+    '''
+
     def __init__(self, server, client_id, client_secret, ssl_verify):
         self.client_id = client_id
         self.client_secret = client_secret
