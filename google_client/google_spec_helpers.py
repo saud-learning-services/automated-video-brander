@@ -55,7 +55,7 @@ def translate_video_properties(video):
     top_slate = 'sauder_slate.mp4'
     tail = 'sauder_tail.mp4'
 
-    if watermark == 'UBC':
+    if watermark == 'UBC only  (in beta)':
         watermark = 'ubc.png'
         top_slate = 'ubc_slate.mp4'
         tail = 'ubc_tail.mp4'
