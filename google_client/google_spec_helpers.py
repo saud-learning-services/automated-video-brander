@@ -36,7 +36,7 @@ def translate_video_properties(video):
         wm_location = 'L'
 
     src_url = str(video[
-        'Panopto folder location where we can find your video? After uploading your video to Panopto, please copy the Share Link as illustrated in the image below. (Required)'])
+        'Panopto video location where we can find your video? After uploading your video to Panopto, please copy the Share Link as illustrated in the image below. (Required)'])
     course = str(
         video['Course (Choose "Other" to customize, Maximum 15 characters; Optional)'])
     code = str(video['Course Code (e.g. 101; Optional)'])
