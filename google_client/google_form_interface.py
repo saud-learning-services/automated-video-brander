@@ -52,6 +52,7 @@ class GoogleFormInterface:
 
         for index, video in form_data.iterrows():
 
+            # Skip row if it requires an editor
             if requires_more_edits(video):
                 logging.error(
                     'Video requires editor. Automated process skipping...')
@@ -60,6 +61,12 @@ class GoogleFormInterface:
                 continue
 
             props = translate_video_properties(video)
+
+            if props['src_url'].startswith('https://sauderlearningservices.hosted.panopto.com/'):
+                logging.error(
+                    'Wrong instance (using OLD learning services Panopto)')
+                print('Skipping video...')
+                continue
 
             data = {
                 'Id': props['id'],
