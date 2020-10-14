@@ -1,11 +1,12 @@
 import os
-from dotenv import load_dotenv
 
 from panopto.panopto_oauth2 import PanoptoOAuth2
 from panopto.panopto_interface import Panopto
 
 import pandas as pd
 import pprint as pp
+
+from dotenv import load_dotenv
 
 
 def migrate_vidos():
@@ -25,34 +26,27 @@ def migrate_vidos():
                'Top Slate', 'Watermark', 'Watermark Position', 'Source URL']
     specs = pd.DataFrame(columns=columns)
 
-    folder_id = '84504582-395c-4878-9898-a931013c1dd6'
+    folder_id = 'c91127d3-6eb2-4723-b1df-ac410107a30c'
 
-    # Get a list of child folders from the given parent
-    child_folders = panopto.get_child_folders(folder_id)
+    unique_id = 1
 
-    # For each subfolder
-    for result in child_folders['Results']:
-        # Get a list of sessions in the given folder
-        subfolder_id = result['Id']
-        # print(subfolder_id)
-        sessions = panopto.get_sessions(subfolder_id)
-        for session in sessions:
-            # print(session)
-            # pp.pprint(session)
-            url = session['Urls']['ViewerUrl']
-            data = {
-                'Id': '666',
-                'Course': '',
-                'Section': '',
-                'Instructor': '',
-                'Source Folder': session['FolderDetails']['Name'],
-                'Title': session['Name'],
-                'Top Slate': 'sauder_slate.mp4',
-                'Watermark': '',
-                'Watermark Position': '',
-                'Source URL': url
-            }
-            specs = specs.append(data, ignore_index=True)
+    sessions = panopto.get_sessions(folder_id)
+    for session in sessions:
+        url = session['Urls']['ViewerUrl']
+        data = {
+            'Id': str(unique_id),
+            'Course': '',
+            'Section': '',
+            'Instructor': '',
+            'Source Folder': session['FolderDetails']['Name'],
+            'Title': session['Name'],
+            'Top Slate': 'sauder_slate.mp4',
+            'Watermark': '',
+            'Watermark Position': '',
+            'Source URL': url
+        }
+        specs = specs.append(data, ignore_index=True)
+        unique_id += 1
 
     print('Writing output csv!')
     specs.to_csv('input/specs.csv', index=False)
