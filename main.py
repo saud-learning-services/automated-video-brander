@@ -1,4 +1,4 @@
-'''
+"""
 UBC Sauder School of Business
 Automated Video Branding Tool
 
@@ -6,7 +6,7 @@ Author: Marko Prodanovic
 
 Main entry point for the Automated Branding Tool
 Runs all 4 steps (described below)
-'''
+"""
 
 from termcolor import cprint
 from download_videos import download_videos
@@ -17,21 +17,24 @@ from google_client.google_form_interface import GoogleFormInterface
 from datetime import datetime
 import logging
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # LOG SETUP
     now = datetime.now()
-    now_formatted = now.strftime('%m-%d-%Y %H:%M:%S')
+    now_formatted = now.strftime("%m-%d-%Y %H:%M:%S")
 
     filename = now_formatted
 
-    logging.basicConfig(format='%(asctime)s: %(levelname)s - %(message)s',
-                        filename=f'logs/{filename}.log', level=logging.INFO)
+    logging.basicConfig(
+        format="%(asctime)s: %(levelname)s - %(message)s",
+        filename=f"logs/{filename}.log",
+        level=logging.INFO,
+    )
 
     # 0
     # Get data from google forms - archive previous spec sheet
-    google = GoogleFormInterface()
-    google.generate_specs()
+    # google = GoogleFormInterface()
+    # google.generate_specs()
 
     # 1
     # Downloads all streams of video specified in Source URL column (in specs.csv)
@@ -54,5 +57,5 @@ if __name__ == '__main__':
     upload_videos()
 
     # Completion printouts
-    cprint('\nCOMPLETED', 'green')
-    cprint('\nMade by Marko Prodanovic\n', 'yellow')
+    cprint("\nCOMPLETED", "green")
+    cprint("\nMade by Marko Prodanovic\n", "yellow")
