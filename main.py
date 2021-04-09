@@ -33,8 +33,8 @@ if __name__ == "__main__":
 
     # 0
     # Get data from google forms - archive previous spec sheet
-    # google = GoogleFormInterface()
-    # google.generate_specs()
+    google = GoogleFormInterface()
+    google.generate_specs()
 
     # 1
     # Downloads all streams of video specified in Source URL column (in specs.csv)

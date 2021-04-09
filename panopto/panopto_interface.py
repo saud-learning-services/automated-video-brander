@@ -128,11 +128,6 @@ class Panopto:
             }
         )
 
-        # OLD WAY TO DELETE
-        # self.requests_session.cookies = requests.utils.cookiejar_from_dict(
-        #     {".ASPXAUTH": os.getenv("ASPXAUTH")}
-        # )
-
         url = f"https://{server}/Panopto/Pages/Viewer/DeliveryInfo.aspx"
         params = {"deliveryId": session_id, "responseType": "json"}
         resp = self.requests_session.post(url=url, params=params)
