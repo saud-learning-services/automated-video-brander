@@ -43,9 +43,11 @@ class Panopto:
         # ref. https://2.python-requests.org/en/master/user/advanced/#session-objects
         self.requests_session = requests.Session()
         self.requests_session.verify = self.ssl_verify
-        self.requests_session.cookies = requests.utils.cookiejar_from_dict(
-            {".ASPXAUTH": self.__get_aspxauth_token()}
-        )
+        # self.requests_session.cookies = requests.utils.cookiejar_from_dict(
+        #     {".ASPXAUTH": self.__get_aspxauth_token()}
+        # )
+
+        # self.requests_session.headers.update(headers)
 
         self.__setup_or_refresh_access_token()
 
@@ -121,22 +123,27 @@ class Panopto:
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        self.requests_session.headers.update(
-            {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15",
-                "Content-Type": "video/mp4",
-            }
-        )
+        # self.requests_session.headers.update(
+        #     {
+        #         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15",
+        #         "Content-Type": "video/mp4",
+        #     }
+        # )
 
-        url = f"https://{server}/Panopto/Pages/Viewer/DeliveryInfo.aspx"
-        params = {"deliveryId": session_id, "responseType": "json"}
-        resp = self.requests_session.post(url=url, params=params)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15',
+            'Content-Type': 'video/mp4',
+            'Cookie': '.ASPXAUTH=' + self.__get_aspxauth_token()
+        }
+
+        url = f"https://{server}/Panopto/Pages/Viewer/DeliveryInfo.aspx?deliveryId={session_id}&responseType=json"
+        payload = {"deliveryId": session_id, "responseType": "json"}
+        resp = requests.request("GET", url=url, headers=headers)
 
         if resp.status_code != 200:
             raise RuntimeError(
                 f"Download response came with status code {resp.status_code}\nCheck ASPXAUTH token."
             )
-
         delivery_info = json.loads(resp.text)
         if "ErrorMessage" in delivery_info.keys():
             message = delivery_info["ErrorMessage"]
