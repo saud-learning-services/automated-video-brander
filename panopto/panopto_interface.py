@@ -96,9 +96,7 @@ class Panopto:
 
         containing_dir = os.path.dirname(os.path.abspath(__file__))
 
-        f = open(
-            f"{containing_dir}/sauder_login_payload.json",
-        )
+        f = open(f"{containing_dir}/sauder_login_payload.json",)
         data = json.load(f)
         payload = data
         f.close()
@@ -111,7 +109,10 @@ class Panopto:
                 headers=headers,
             )
             cookie_dict = resp.cookies.get_dict()
-            return cookie_dict[".ASPXAUTH"]
+            # return cookie_dict[".ASPXAUTH"]
+
+            # Temporary workaround - add ASPXAUTH to .env
+            return os.getenv("ASPXAUTH")
 
     def download_video(self, session_id, output_folder):
         """
@@ -131,9 +132,9 @@ class Panopto:
         # )
 
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15',
-            'Content-Type': 'video/mp4',
-            'Cookie': '.ASPXAUTH=' + self.__get_aspxauth_token()
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15",
+            "Content-Type": "video/mp4",
+            "Cookie": ".ASPXAUTH=" + self.__get_aspxauth_token(),
         }
 
         url = f"https://{server}/Panopto/Pages/Viewer/DeliveryInfo.aspx?deliveryId={session_id}&responseType=json"
