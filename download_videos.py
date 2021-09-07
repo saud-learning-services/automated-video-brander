@@ -44,7 +44,7 @@ def download_videos():
         course = specs["course"]
         title = specs["title"]
         instructor = specs["instructor"]
-        src_url = specs["src_url"]
+        src_url = specs["src_url"].strip()
 
         cprint(f"Starting download for <row {index}>:", "yellow")
         logging.info(

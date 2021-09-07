@@ -42,7 +42,7 @@ def upload_videos():
         course_code = specs["course"]
         video_title = specs["title"]
         instructor_name = specs["instructor"]
-        src_url = specs["src_url"]
+        src_url = specs["src_url"].strip()
 
         cprint(f"Starting upload for <row {index}>:", "yellow")
         logging.info(
