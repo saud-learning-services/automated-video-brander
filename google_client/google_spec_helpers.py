@@ -51,6 +51,9 @@ def translate_video_properties(video):
             "Panopto video location where we can find your video? After uploading your video to Panopto, please copy the Share Link as illustrated in the image below. (Required)"
         ]
     )
+
+    src_url = src_url.split('&')[0]
+
     course = str(
         video['Course (Choose "Other" to customize, Maximum 15 characters; Optional)']
     )
@@ -77,7 +80,7 @@ def translate_video_properties(video):
     top_slate = "sauder_slate.mp4"
     tail = "sauder_tail.mp4"
 
-    if watermark == "UBC only  (in beta)":
+    if watermark == "UBC Only":
         watermark = "ubc.png"
         top_slate = "ubc_slate.mp4"
         tail = "ubc_tail.mp4"

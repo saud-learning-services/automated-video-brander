@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 import requests
 import youtube_dl
+import urllib
 
 from termcolor import cprint
 
@@ -90,29 +91,33 @@ class Panopto:
         response.raise_for_status()
 
     def __get_aspxauth_token(self):
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:81.0) Gecko/20100101 Firefox/81.0",
-        }
+        # DEPRECIATED CODE FROM WHEN WE USED TO SIMULATE LOGINS TO GENERATE ASPXAUTH
+        # Now we just return the ASPXAUTH from state
 
-        containing_dir = os.path.dirname(os.path.abspath(__file__))
+        return os.getenv("ASPXAUTH")
 
-        f = open(f"{containing_dir}/sauder_login_payload.json",)
-        data = json.load(f)
-        payload = data
-        f.close()
+        # headers = {
+        #     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:81.0) Gecko/20100101 Firefox/81.0",
+        # }
 
-        with requests.session() as s:
-            print("Generating .ASPXAUTH token")
-            resp = s.post(
-                "https://ubc.ca.panopto.com/Panopto/Pages/Auth/Login.aspx?",
-                data=payload,
-                headers=headers,
-            )
-            cookie_dict = resp.cookies.get_dict()
+        # containing_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # f = open(f"{containing_dir}/sauder_login_payload.json",)
+        # data = json.load(f)
+        # payload = data
+        # f.close()
+
+        # with requests.session() as s:
+        #     print("Generating .ASPXAUTH token")
+        #     resp = s.post(
+        #         "https://ubc.ca.panopto.com/Panopto/Pages/Auth/Login.aspx?",
+        #         data=payload,
+        #         headers=headers,
+        #     )
+        #     cookie_dict = resp.cookies.get_dict()
             # return cookie_dict[".ASPXAUTH"]
 
             # Temporary workaround - add ASPXAUTH to .env
-            return os.getenv("ASPXAUTH")
 
     def download_video(self, session_id, output_folder):
         """
@@ -123,13 +128,6 @@ class Panopto:
 
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
-
-        # self.requests_session.headers.update(
-        #     {
-        #         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15",
-        #         "Content-Type": "video/mp4",
-        #     }
-        # )
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15",
@@ -153,19 +151,39 @@ class Panopto:
             )
 
         streams = delivery_info["Delivery"]["Streams"]
-        for stream in streams:
-            if stream["StreamType"] == 1:
-                filename = "primary.mp4"
-            elif stream["StreamType"] == 2:
-                filename = "secondary.mp4"
-            else:
-                raise ValueError
 
-            dest_filename = os.path.join(output_folder, filename)
-            print("Downloading to: ", dest_filename)
-            ydl_opts = {"outtmpl": dest_filename, "quiet": True}
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([stream["StreamUrl"]])
+        # if len(streams) == 1:
+        download_url = delivery_info["DownloadUrl"]
+        print("Downloading stingle stream...")
+        dest_filename = os.path.join(output_folder, "primary.mp4")
+        with requests.get(url=download_url, headers=headers, allow_redirects=True, stream=True) as r:
+            r.raise_for_status()
+            with open(dest_filename, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                
+        # CHANGED BEHAVIOUR JAN 2022
+        # Whereas we used to download each stream individually, API changes have
+        # made this difficult. We now download each sessions "podcast" file.
+        
+        #     for stream in streams:
+        #         if stream["StreamType"] == 1:
+        #             filename = "primary.mp4"
+        #         elif stream["StreamType"] == 2:
+        #             filename = "secondary.mp4"
+        #         else:
+        #             raise ValueError
+
+        #         dest_filename = os.path.join(output_folder, filename)
+        #         print("Downloading to: ", dest_filename)
+        #         ydl_opts = {"outtmpl": dest_filename, "quiet": True}
+        #         print(stream["StreamUrl"])
+        #         try:
+        #             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        #                 ydl.download([stream["StreamUrl"]])
+        #         except Exception as error:
+        #             print(error)
+        
 
     def __get_session(self, session_id):
         """

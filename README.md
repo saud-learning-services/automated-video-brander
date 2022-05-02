@@ -16,10 +16,6 @@ Run at consistent intervals to support video-automation process where:
 2. Faculty members submit a Google Form specifying what kind of branding treatment they'd like to recieve
 3. Within 24 hours, a personalized and branded version of the video is auto-generated and available in the same folder in Panopto.
 
-## Status
-
-This project is _still under development_. While the application works, it is far from completed -- there are already performance improvements, architectural changes, and refactoring planned. It is being shared publicly due to interest from colleagues and institutions with similar video-content challenges.
-
 ## Environment
 
 After cloning the repo, create a `.env` in the root folder with the following properties:
@@ -74,10 +70,10 @@ The tail for the end of the video goes in the `/tail` folder
 
 The tool is designed to integrate with Panopto and provide faculty with a simple automated-video-branding service through a 4 step process:
 
-1. **Downloading:** The tool pulls raw video content (.mp4 files) from Panopto, specified through a Source URL (in specs.csv). It supports single-stream and dual-stream video content, which allows us to accomodate for screencapture and other multi-source presentation styles.
+1. **Downloading:** The tool pulls raw video content (.mp4 files) from Panopto, specified through a Source URL (in specs.csv). It supports single-stream and multi-stream, both of which will be downloaded through podcast files.
 2. **Watermarking:** The tool adds watermark to the user's specification (in specs.csv)
 3. **Stitching:** The tool creates a custom top to the user's specification including `[Title*, Instructor name, Course code, Section number]`. Stitches top, content and tail together with fades between.
-4. **Uploading:** The tool uploads the video content (single or multi-stream) back to the same folder on Panopto as the source content
+4. **Uploading:** The tool uploads the video content back to the same folder on Panopto as the source content
 
 Each of these steps can be run individually by calling its respective python module:
 
