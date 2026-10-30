@@ -50,3 +50,6 @@ saud-ls-brander-package/
 
 brander.lock
 *~
+
+# long videos still processing in Panopto, checked by later runs
+pending_uploads.json

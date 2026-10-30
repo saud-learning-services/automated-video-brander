@@ -1,4 +1,6 @@
 import os
+import json
+import time
 import logging
 import datetime
 import codecs
@@ -8,8 +10,15 @@ from helpers import load_specifications, get_video_attributes, send_notification
 from panopto.panopto_oauth2 import PanoptoOAuth2
 from panopto.panopto_interface import Panopto, UPLOAD_COMPLETED, PROCESSING, COMPLETE
 
-# How long to wait for Panopto to finish processing the uploads
-DEFAULT_PROCESSING_TIMEOUT_MINUTES = 60
+# How long a run waits for Panopto to process its uploads. Rejected files fail
+# quickly; long videos still processing after this are checked by later runs.
+DEFAULT_PROCESSING_TIMEOUT_MINUTES = 30
+
+# Report an upload that is still processing after this many hours
+MAX_PENDING_HOURS = 24
+
+# Uploads still processing at the end of a run, checked by the next runs
+PENDING_UPLOADS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pending_uploads.json")
 
 
 def upload_videos():
@@ -155,19 +164,23 @@ def upload_videos():
             send_notification(f" ERROR Upload failed for {video_title}: {err}", "ERROR")
             continue
 
-    processed = __wait_for_panopto(panopto, uploads)
-    logging.info("Processed in Panopto: %i of %i", processed, requested)
-    return processed, requested
+    ready, still_processing = __wait_for_panopto(panopto, uploads)
+    logging.info(
+        "Uploaded: %i of %i (%i still processing in Panopto)",
+        ready + still_processing, requested, still_processing,
+    )
+    return ready + still_processing, requested, still_processing
 
 
 def __wait_for_panopto(panopto, uploads):
     """
-    Wait for Panopto to finish processing the uploads ({upload_id: title}).
-    Notifies about any that fail or are still processing at the time limit.
-    Returns how many finished processing.
+    Wait a while for Panopto to process the uploads ({upload_id: title}), which
+    catches files Panopto rejects. Long videos that are still processing at the
+    time limit are saved to pending_uploads.json and checked by later runs.
+    Returns (ready, still processing).
     """
     if not uploads:
-        return 0
+        return 0, 0
 
     timeout_minutes = int(os.getenv("PROCESSING_TIMEOUT_MINUTES", DEFAULT_PROCESSING_TIMEOUT_MINUTES))
     cprint(
@@ -176,26 +189,104 @@ def __wait_for_panopto(panopto, uploads):
     )
     states = panopto.wait_for_processing(list(uploads), timeout_minutes * 60)
 
-    processed = 0
+    ready = 0
+    still_processing = {}
     for upload_id, title in uploads.items():
         state = states[upload_id]
         if state == COMPLETE:
-            processed += 1
+            ready += 1
             cprint(f"   Ready in Panopto: {title}", "green")
             logging.info("Ready in Panopto: %s (upload %s)", title, upload_id)
         elif state in (PROCESSING, UPLOAD_COMPLETED, None):
-            send_notification(
-                f" ERROR {title} is still not processed after {timeout_minutes} minutes."
-                f" Check it in Panopto (upload {upload_id}).",
-                "ERROR",
-            )
+            still_processing[upload_id] = title
+            cprint(f"   Still processing in Panopto: {title} (checked again next run)", "yellow")
+            logging.info("Still processing in Panopto: %s (upload %s)", title, upload_id)
         else:
-            send_notification(
-                f" ERROR Panopto could not process {title} (state {state}, upload {upload_id})."
-                f" The session will show no content.",
-                "ERROR",
-            )
-    return processed
+            __processing_failed(title, state, upload_id)
+
+    if still_processing:
+        pending = __load_pending_uploads()
+        for upload_id, title in still_processing.items():
+            pending[upload_id] = {"title": title, "uploaded_at": time.time()}
+        __save_pending_uploads(pending)
+        send_notification(
+            f" INFO Still processing in Panopto (normal for long videos), the next run checks them:"
+            f" {', '.join(still_processing.values())}",
+            "INFO",
+        )
+    return ready, len(still_processing)
+
+
+def check_earlier_uploads():
+    """
+    Check uploads that were still processing at the end of an earlier run.
+    Notifies when each is ready, fails, or is still not ready after MAX_PENDING_HOURS.
+    """
+    pending = __load_pending_uploads()
+    if not pending:
+        return
+
+    load_dotenv()
+    server = os.getenv("SERVER")
+    oauth2 = PanoptoOAuth2(server, os.getenv("CLIENT_ID"), os.getenv("CLIENT_SECRET"), True)
+    panopto = Panopto(server, True, oauth2)
+
+    cprint(f"\nChecking {len(pending)} video(s) still processing from earlier runs...", "yellow")
+    remaining = {}
+    for upload_id, info in pending.items():
+        title = info["title"]
+        try:
+            state = panopto.get_upload_state(upload_id)
+        except Exception as err:
+            logging.warning("Could not check upload %s (%s): %s", upload_id, title, err)
+            remaining[upload_id] = info
+            continue
+
+        if state == COMPLETE:
+            cprint(f"   Ready in Panopto: {title}", "green")
+            send_notification(f" INFO Now ready in Panopto: {title}", "INFO")
+        elif state in (PROCESSING, UPLOAD_COMPLETED):
+            hours = (time.time() - info["uploaded_at"]) / 3600
+            if hours > MAX_PENDING_HOURS:
+                send_notification(
+                    f" ERROR {title} is still not processed after {MAX_PENDING_HOURS} hours."
+                    f" Check it in Panopto (upload {upload_id}).",
+                    "ERROR",
+                )
+            else:
+                remaining[upload_id] = info
+        else:
+            __processing_failed(title, state, upload_id)
+
+    __save_pending_uploads(remaining)
+
+
+def __processing_failed(title, state, upload_id):
+    send_notification(
+        f" ERROR Panopto could not process {title} (state {state}, upload {upload_id})."
+        f" The session will show no content.",
+        "ERROR",
+    )
+
+
+def __load_pending_uploads():
+    if not os.path.exists(PENDING_UPLOADS_FILE):
+        return {}
+    try:
+        with open(PENDING_UPLOADS_FILE) as f:
+            return json.load(f)
+    except (OSError, ValueError) as err:
+        logging.error("Could not read %s: %s", PENDING_UPLOADS_FILE, err)
+        return {}
+
+
+def __save_pending_uploads(pending):
+    if not pending:
+        if os.path.exists(PENDING_UPLOADS_FILE):
+            os.remove(PENDING_UPLOADS_FILE)
+        return
+    with open(PENDING_UPLOADS_FILE, "w") as f:
+        json.dump(pending, f, indent=2)
 
 
 

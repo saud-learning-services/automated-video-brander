@@ -16,11 +16,44 @@ Run at consistent intervals to support video-automation process where:
 2. Faculty members submit a Google Form specifying what kind of branding treatment they'd like to recieve
 3. Within 24 hours, a personalized and branded version of the video is auto-generated and available in the same folder in Panopto.
 
-## Environment
+## Setup
 
-Requires macOS (watermarking uses the `h264_videotoolbox` hardware encoder) and [Miniforge/conda](https://github.com/conda-forge/miniforge).
+Requires a Mac (watermarking uses the Mac's `h264_videotoolbox` hardware encoder) with Python 3.15 from [Miniforge](https://github.com/conda-forge/miniforge). Miniforge also installs ffmpeg into the environment.
 
-After cloning the repo, copy `env.example.txt` to `.env` in the root folder and fill it in:
+### 1. Install Miniforge
+
+Use the installer that matches the Mac. Check with `uname -m`: `arm64` means Apple Silicon (M1 or later).
+
+> An Intel ("x86_64") Miniconda or Anaconda on an Apple Silicon Mac can't install the current packages. Install Miniforge alongside it; the old install keeps working.
+
+Apple Silicon:
+
+```
+curl -L -o ~/Miniforge3.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-arm64.sh
+bash ~/Miniforge3.sh -b -p ~/miniforge3
+```
+
+(Intel Macs: use `Miniforge3-MacOSX-x86_64.sh` instead.)
+
+`-b` installs without changing your shell setup, so the commands below use the full path `~/miniforge3/...`.
+
+### 2. Create the environment
+
+From the project folder:
+
+```
+~/miniforge3/bin/conda env create -f environment.yml
+```
+
+This creates the `automated-editor-py315` environment. To update it after `environment.yml` changes:
+
+```
+~/miniforge3/bin/conda env update -f environment.yml --prune
+```
+
+### 3. Configure
+
+Copy `env.example.txt` to `.env` in the project folder and fill it in:
 
 ```
 SERVER = ubc.ca.panopto.com            # your Panopto server
@@ -30,70 +63,93 @@ GOOGLE_APPLICATION_CREDENTIALS = ./google_client/secrets.json
 USER_REQUESTS_SPREADSHEET_TITLE = 'Post Production Branding Request form (Responses)'
 NTFY_URL = https://ntfy.sh/your-private-topic   # push notifications; leave empty to only log
 ARCHIVE_RETENTION_DAYS = 14            # days to keep zipped copies of processed videos
+PROCESSING_TIMEOUT_MINUTES = 30        # see "Panopto processing" below
 ```
 
-Optional settings are described in `env.example.txt`.
+Also needed:
 
-### Create the environment (Python 3.15)
+- `google_client/secrets.json`: the Google service account key for the request form's spreadsheet
+- `google_client/LastRun.txt`: one line like `LastRun=10/30/2026 13:00:00` (MM/DD/YYYY HH:MM:SS). Form responses after this time are processed on the next run. The brander updates it each run.
+- Assets in `input/top_slates`, `input/tail` and `input/watermark` (see Additional Inputs)
+- The Whitney fonts (`WhitneyHTF`, `WhitneyHTF-SemiBoldCondensed`) installed on the Mac, for title cards; otherwise a default font is used
+
+### 4. First Panopto login
+
+Check the Panopto login (the first time, a browser opens to approve access):
 
 ```
-conda env create -f environment.yml
-conda activate automated-editor-py315
+source ~/miniforge3/bin/activate automated-editor-py315
+python -c "from dotenv import load_dotenv; load_dotenv(); import automated_brander as a; a.__check_panopto_login()"
 ```
 
-### Upgrading an existing install
-
-The previous Python 3.8 environment (`automated-editor`) is left untouched, so you can switch back if needed.
-
-1. `git pull` to get this version
-2. `conda env create -f environment.yml` (creates `automated-editor-py315` alongside the old one)
-3. Stop the running brander (Ctrl-C in its Terminal window)
-4. Start it again with `start_brander.command`, which uses the new environment
-5. Once you're happy, remove the old environment with `conda env remove -n automated-editor`
-
-To roll back: stop the brander, `conda activate automated-editor`, check out the previous version, then run `python launcher.py`.
-`environment-legacy-py38.yml` recreates the old environment if it has been removed.
-
-To update packages later: `conda env update -f environment.yml --prune`
-
-### Fonts
-
-Title cards use the Whitney fonts (`WhitneyHTF`, `WhitneyHTF-SemiBoldCondensed`). They must be installed on the Mac, otherwise a default font is used.
+It should print `Panopto login OK`.
 
 ## Running
 
 ### Scheduled (normal use)
 
-Double-click `start_brander.command` in Finder. A Terminal window opens and runs the brander at 09:10 and 16:00 every day. Leave the window open. To stop it, press Ctrl-C or close the window.
+Double-click `start_brander.command` in Finder. A Terminal window opens, activates the `automated-editor-py315` environment and runs the brander every day at **09:10** and **16:00**. Leave the window open. To stop it, press Ctrl-C or close the window.
 
 The first time, macOS may say the file can't be opened: right-click it, choose **Open**, then **Open** again.
 
-Or from a terminal:
+Or from a terminal, in the project folder:
 
 ```
-conda activate automated-editor-py315
+source ~/miniforge3/bin/activate automated-editor-py315
 python launcher.py
 ```
+
+To change the times, edit the `schedule.every().day.at(...)` lines in `launcher.py` and restart it.
+
+If a run is still going at the next scheduled time, that run starts as soon as the current one finishes. An error in one run is reported and doesn't stop the scheduler.
 
 ### Run once now
 
 ```
-conda activate automated-editor-py315
+source ~/miniforge3/bin/activate automated-editor-py315
 python automated_brander.py
 ```
 
-Only one brander runs at a time. A second run started while one is in progress is skipped.
+Only one brander runs at a time: a run started while another is in progress (e.g. from a second Terminal window) is skipped.
+
+### What to expect
+
+Each run sends ntfy notifications and writes `logs/<date time>.log`. It ends with a summary such as:
+
+- `Branding COMPLETED: 2 of 2 videos uploaded` (green)
+- `Branding FINISHED WITH ERRORS: 1 of 2 videos uploaded. See logs/...` (red), plus an error notification saying what went wrong
+
+Before processing anything, a run checks that ffmpeg is available, that the Panopto login works and that `LastRun.txt` is valid. If any of these fail, nothing is processed and the form requests are picked up again on the next run.
+
+### Panopto processing
+
+After uploading, a run waits up to `PROCESSING_TIMEOUT_MINUTES` (default 30) for Panopto to process the videos. A file Panopto can't process fails within that time and is reported as an error.
+
+Long videos (1.5 hours or more) usually take longer to process. They're reported as "still processing", saved in `pending_uploads.json`, and checked at the start of each later run. You get a notification when each is ready, or an error if processing fails or it still isn't ready after 24 hours. Panopto keeps processing regardless of what the brander does.
 
 ### Running with launchd (optional)
 
 Instead of a Terminal window, launchd can run the brander in the background, start it at login and restart it if it stops.
 
-1. Edit `launchd/ca.ubc.sauder.video-brander.plist` and replace the `/PATH/TO/...` values
+1. Edit `launchd/ca.ubc.sauder.video-brander.plist` and replace the `/PATH/TO/...` values. With the setup above, the environment's python is `~/miniforge3/envs/automated-editor-py315/bin/python` (write the full path, launchd doesn't expand `~`).
 2. `cp launchd/ca.ubc.sauder.video-brander.plist ~/Library/LaunchAgents/`
 3. `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/ca.ubc.sauder.video-brander.plist`
 
 Output goes to `logs/launchd.out.log`. To stop it: `launchctl bootout gui/$(id -u)/ca.ubc.sauder.video-brander`.
 Don't run `start_brander.command` at the same time.
+
+## Upgrading from the Python 3.8 version
+
+The old environment (`automated-editor`, in the old Miniconda/Anaconda) isn't changed, so you can switch back.
+
+1. Get this version: `git fetch origin` and `git switch legacy-login-and-py315` (or `git pull` once it's merged into `main`)
+2. Follow Setup steps 1, 2 and 4. Add `NTFY_URL` to `.env`; `ASPXAUTH` is no longer needed.
+3. Stop the old brander (Ctrl-C in its Terminal window)
+4. Start the new one with `start_brander.command`
+5. Once you're happy, remove the old install (for example `rm -rf /opt/miniconda3`), then run `~/miniforge3/bin/conda init zsh` so plain `conda` uses Miniforge
+
+To roll back: stop the brander, check out the previous version (`git switch main`), activate the old environment and run `python launcher.py`.
+`environment-legacy-py38.yml` recreates the old environment if it has been removed.
 
 ## Panopto authentication
 
@@ -175,7 +231,7 @@ All logic for interfacing with panopto is in `panopto/panopto_interface.py`, exc
 - `/output` directory contents will be cleared on step 3 and its contents will be zipped in `/output/archive` (timestamped)
 - `/input/body` directory contents will be cleared on step 1 and its contents will be zipped in `/input/body/archive` (timestamped)
 - Archives older than `ARCHIVE_RETENTION_DAYS` (default 14) are deleted at the end of each run
-- After uploading, the brander waits up to `PROCESSING_TIMEOUT_MINUTES` (default 60) for Panopto to finish processing, and sends an error for any video that fails or isn't ready by then
+- Long videos still processing in Panopto at the end of a run are tracked in `pending_uploads.json` (see Panopto processing)
 - Source clip (specified in Source URL in specs.) should be a single video clip with _approx. 3_ seconds before/after the speaker speaks
 - Watermark position defaults to bottom-right. Bottom left only if Watermark Position is **l** (in CSV)
 - Only supports single line titles (titles can not exceed 45 characters)

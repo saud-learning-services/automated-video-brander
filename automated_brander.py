@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from download_videos import download_videos
 from watermark import watermark
 from stitch import stitch
-from upload_videos import upload_videos
+from upload_videos import upload_videos, check_earlier_uploads
 from google_client.google_form_interface import GoogleFormInterface
 from panopto.panopto_oauth2 import PanoptoOAuth2
 from panopto.panopto_interface import Panopto
@@ -93,6 +93,13 @@ def __run():
         return
     google.save_last_run(run_started)
 
+    # Long videos from earlier runs that were still processing in Panopto
+    try:
+        check_earlier_uploads()
+    except Exception as err:
+        cprint(f"\nCould not check earlier uploads: {err}", "red")
+        logging.error("Could not check earlier uploads: %s", err)
+
     # 1
     # Downloads all streams of video specified in Source URL column (in specs.csv)
     if not download_videos():
@@ -115,21 +122,23 @@ def __run():
         # 4
         # Uploads all processed clips to Panopto to same folder as source session
         # Can handle single and multi-stream content (primary and secondary video)
-        uploaded, requested = upload_videos()
+        uploaded, requested, still_processing = upload_videos()
+
+        result = f"{uploaded} of {requested} videos uploaded"
+        if still_processing:
+            result += f" ({still_processing} still processing in Panopto)"
 
         if uploaded == requested:
-            cprint(f"\nBranding COMPLETED: {uploaded} of {requested} videos ready in Panopto", "green")
-            send_notification(f" INFO Branding completed: {uploaded} of {requested} videos ready in Panopto", "INFO")
+            cprint(f"\nBranding COMPLETED: {result}", "green")
+            send_notification(f" INFO Branding completed: {result}", "INFO")
         else:
             cprint(
-                f"\nBranding FINISHED WITH ERRORS: {uploaded} of {requested} videos ready in Panopto."
-                f" See logs/{now_formatted}.log",
+                f"\nBranding FINISHED WITH ERRORS: {result}. See logs/{now_formatted}.log",
                 "red",
                 attrs=["bold"],
             )
             send_notification(
-                f" ERROR Branding finished with errors: {uploaded} of {requested} videos ready in Panopto."
-                f" See logs/{now_formatted}.log",
+                f" ERROR Branding finished with errors: {result}. See logs/{now_formatted}.log",
                 "ERROR",
             )
 
