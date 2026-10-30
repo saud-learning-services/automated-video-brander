@@ -25,6 +25,8 @@ def upload_videos():
     send_notification(msg,"INFO")
 
     panopto = Panopto(server, True, oauth2)
+    uploaded = 0
+    requested = len(specs.index)  # specs is reused for each row below
     for index, row in specs.iterrows():
         print("\n------------------------------------------\n")
 
@@ -132,6 +134,7 @@ def upload_videos():
 
             panopto.upload_folder(local_folder_path, panopto_folder_id)
             cprint("UPLOAD COMPLETED\n", "green")
+            uploaded += 1
             cprint(f"   video: {video_title}", "blue")
             cprint(f"   src folder: {local_folder_path}", "blue")
             cprint(f"   destination (panopto): {panopto_folder_name}", "blue")
@@ -149,7 +152,8 @@ def upload_videos():
             send_notification(f" ERROR Upload failed for {video_title}: {err}", "ERROR")
             continue
 
-    send_notification(f" INFO Completed uploads", "INFO")
+    logging.info("Completed uploads: %i of %i", uploaded, requested)
+    return uploaded, requested
 
 
 

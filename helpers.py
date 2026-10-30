@@ -8,8 +8,32 @@ from zipfile import ZipFile
 from termcolor import cprint
 from datetime import datetime
 
+import sys
 import pandas as pd
 from pandas.errors import EmptyDataError, ParserError
+
+
+def use_environment_tools():
+    """
+    Put the Python environment's bin folder first on PATH, so ffmpeg/ffprobe
+    from the conda environment are found even when it isn't activated
+    (e.g. running .../envs/automated-editor-py315/bin/python directly, or launchd).
+    """
+    env_bin = os.path.dirname(sys.executable)
+    path = os.environ.get("PATH", "")
+    if env_bin not in path.split(os.pathsep):
+        os.environ["PATH"] = env_bin + os.pathsep + path
+
+
+# every step imports helpers, so this covers running any of them directly
+use_environment_tools()
+
+
+def missing_video_tools():
+    """
+    Returns the names of required command line tools that can't be found
+    """
+    return [tool for tool in ("ffmpeg", "ffprobe") if shutil.which(tool) is None]
 
 
 def name_normalize(name):

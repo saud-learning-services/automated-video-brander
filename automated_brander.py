@@ -22,7 +22,7 @@ from upload_videos import upload_videos
 from google_client.google_form_interface import GoogleFormInterface
 from panopto.panopto_oauth2 import PanoptoOAuth2
 from panopto.panopto_interface import Panopto
-from helpers import send_notification, delete_old_archives
+from helpers import send_notification, delete_old_archives, missing_video_tools
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -63,9 +63,19 @@ def __run():
         force=True,
     )
 
+    if not os.getenv("NTFY_URL"):
+        cprint("WARNING: NTFY_URL is not set in .env - errors will only be written to the log", "yellow", attrs=["bold"])
+        logging.warning("NTFY_URL is not set in .env - notifications disabled")
+
     # 0
-    # Check we can log in to Panopto before touching the form, so a login
-    # failure doesn't mark this run's requests as done
+    # Check the video tools and the Panopto login before touching the form,
+    # so a setup problem doesn't mark this run's requests as done
+    missing_tools = missing_video_tools()
+    if missing_tools:
+        cprint(f"\n{', '.join(missing_tools)} not found. Install ffmpeg in the environment (see README).", "red")
+        send_notification(f" ERROR {', '.join(missing_tools)} not found, nothing processed. Requests will be retried next run.", "ERROR")
+        return
+
     try:
         __check_panopto_login()
     except Exception as err:
@@ -100,9 +110,23 @@ def __run():
         # 4
         # Uploads all processed clips to Panopto to same folder as source session
         # Can handle single and multi-stream content (primary and secondary video)
-        upload_videos()
+        uploaded, requested = upload_videos()
 
-        cprint("\nBranding COMPLETED", "green")
+        if uploaded == requested:
+            cprint(f"\nBranding COMPLETED: {uploaded} of {requested} videos uploaded", "green")
+            send_notification(f" INFO Branding completed: {uploaded} of {requested} videos uploaded", "INFO")
+        else:
+            cprint(
+                f"\nBranding FINISHED WITH ERRORS: {uploaded} of {requested} videos uploaded."
+                f" See logs/{now_formatted}.log",
+                "red",
+                attrs=["bold"],
+            )
+            send_notification(
+                f" ERROR Branding finished with errors: {uploaded} of {requested} videos uploaded."
+                f" See logs/{now_formatted}.log",
+                "ERROR",
+            )
 
     retention_days = int(os.getenv("ARCHIVE_RETENTION_DAYS", DEFAULT_ARCHIVE_RETENTION_DAYS))
     delete_old_archives("input/body", retention_days)
