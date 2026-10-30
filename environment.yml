@@ -1,6 +1,7 @@
 name: automated-editor-py315
 channels:
   - conda-forge
+  - nodefaults  # don't mix in Anaconda "defaults" packages; they conflict with conda-forge
 dependencies:
   - python=3.15
   - pip
