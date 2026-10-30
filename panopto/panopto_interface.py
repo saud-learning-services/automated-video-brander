@@ -3,6 +3,7 @@ import logging
 import copy
 import time
 import boto3  # AWS SDK (boto3)
+from botocore.config import Config
 from botocore.exceptions import ClientError
 import requests
 
@@ -269,12 +270,19 @@ class Panopto:
         # Create S3 client with custom endpoint on Panopto server.
         # Panopto server does not refer access key or secret, but the library needs
         # some values to start, otherwise no credentials error is thrown.
+        # boto3 >= 1.36 adds checksums by default and sends uploads "aws-chunked";
+        # Panopto's endpoint doesn't support that and ends up with unusable files
+        # ("No streams"). "when_required" restores the plain uploads of older boto3.
         s3 = boto3.session.Session().client(
             service_name="s3",
             endpoint_url=service_endpoint,
             verify=self.ssl_verify,
             aws_access_key_id="dummy",
             aws_secret_access_key="dummy",
+            config=Config(
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            ),
         )
 
         # Initiate multipart upload.
