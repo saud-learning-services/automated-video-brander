@@ -1,20 +1,33 @@
 import os
 import logging
-import json
 import copy
 import time
 import boto3  # AWS SDK (boto3)
+from botocore.config import Config
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 import requests
-import youtube_dl
-import urllib
 
 from termcolor import cprint
 
 # Size of each part of multipart upload.
 # This must be between 5MB and 25MB. Panopto server may fail if the size is more than 25MB.
 PART_SIZE = 5 * 1024 * 1024
+
+# How many times a request is retried after refreshing the access token (401/403)
+MAX_AUTH_RETRIES = 2
+
+# How many times finishing an upload is retried after a network error
+MAX_FINISH_RETRIES = 3
+
+# Give up waiting for Panopto to accept an upload after this many seconds
+MONITOR_TIMEOUT_SECONDS = 2 * 60 * 60
+
+# sessionUpload "State" values (Panopto PublicAPI/REST/sessionUpload)
+UPLOAD_COMPLETED = 1
+UPLOAD_CANCELLED = 2
+PROCESSING = 3
+COMPLETE = 4
+PROCESSING_ERROR = 5
 
 
 class Panopto:
@@ -44,11 +57,6 @@ class Panopto:
         # ref. https://2.python-requests.org/en/master/user/advanced/#session-objects
         self.requests_session = requests.Session()
         self.requests_session.verify = self.ssl_verify
-        # self.requests_session.cookies = requests.utils.cookiejar_from_dict(
-        #     {".ASPXAUTH": self.__get_aspxauth_token()}
-        # )
-
-        # self.requests_session.headers.update(headers)
 
         self.__setup_or_refresh_access_token()
 
@@ -57,148 +65,122 @@ class Panopto:
         This method invokes OAuth2 Authorization Code Grant authorization flow.
         It goes through browser UI for the first time.
         It refreshes the access token after that and no user interfaction is requested.
-        This is called at the initialization of the class, as well as when 401 (Unaurhotized) is returend.
+        This is called at the initialization of the class, as well as when 401/403 is returned.
         """
-        access_token = self.oauth2.get_access_token_authorization_code_grant()
+        access_token = self.oauth2.get_access_token()
         self.requests_session.headers.update(
             {"Authorization": "Bearer " + access_token}
         )
         self.current_token = access_token
 
-    def __inspect_response_is_retry_needed(self, response):
+    def __request(self, method, url, **kwargs):
         """
-        Inspect the response of a requets' call.
-        True indicates the retry needed, False indicates success. Othrwise an exception is thrown.
-        Reference: https://stackoverflow.com/a/24519419
-
-        This method detects 403 (Forbidden), refresh the access token, and returns as 'is retry needed'.
-        This example focuses on the usage of upload API and OAuth2, and any other error handling is not implemented.
-        Prodcution code should handle other failure cases and errors as appropriate.
+        Make a request with the OAuth2 session.
+        On 401 (Unauthorized) or 403 (Forbidden) the access token is refreshed and the
+        request retried, up to MAX_AUTH_RETRIES times. Any other failure raises.
         """
-        if response.status_code // 100 == 2:
-            # Success on 2xx response.
-            return False
-
-        if response.status_code == requests.codes.forbidden:
-            print("Forbidden. This may mean token expired. Refresh access token.")
-            logging.error(
-                "Forbidden. This may mean token expired. Refresh access token."
+        for attempt in range(MAX_AUTH_RETRIES + 1):
+            resp = self.requests_session.request(method, url, **kwargs)
+            if resp.status_code not in (401, 403) or attempt == MAX_AUTH_RETRIES:
+                break
+            print(f"{resp.status_code} from Panopto. Access token may have expired. Refreshing...")
+            logging.warning(
+                "%s from %s. Refreshing access token and retrying.", resp.status_code, url
             )
             self.__setup_or_refresh_access_token()
-            return True
 
-        # Throw unhandled cases.
-        response.raise_for_status()
+        resp.raise_for_status()
+        return resp
 
-    def __get_aspxauth_token(self):
-        # DEPRECIATED CODE FROM WHEN WE USED TO SIMULATE LOGINS TO GENERATE ASPXAUTH
-        # Now we just return the ASPXAUTH from state
+    def get_aspxauth_cookie(self):
+        """
+        Exchange the OAuth2 access token for a .ASPXAUTH cookie using the
+        /api/v1/auth/legacyLogin endpoint. The cookie is needed for pages that
+        do not accept a bearer token (DeliveryInfo.aspx and podcast downloads).
 
-        return os.getenv("ASPXAUTH")
+        Falls back to an ASPXAUTH value in .env if legacyLogin does not return a cookie.
+        """
+        url = f"https://{self.server}/Panopto/api/v1/auth/legacyLogin"
 
-        # headers = {
-        #     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:81.0) Gecko/20100101 Firefox/81.0",
-        # }
+        for attempt in range(MAX_AUTH_RETRIES + 1):
+            resp = self.requests_session.get(url)
+            for cookie in resp.cookies:
+                if cookie.name.upper() == ".ASPXAUTH" and cookie.value:
+                    return cookie.value
 
-        # containing_dir = os.path.dirname(os.path.abspath(__file__))
+            # An empty response usually means the access token has expired
+            logging.warning(
+                "legacyLogin returned %s without a .ASPXAUTH cookie (attempt %i)",
+                resp.status_code,
+                attempt + 1,
+            )
+            self.__setup_or_refresh_access_token()
 
-        # f = open(f"{containing_dir}/sauder_login_payload.json",)
-        # data = json.load(f)
-        # payload = data
-        # f.close()
+        fallback = os.getenv("ASPXAUTH")
+        if fallback:
+            logging.warning("legacyLogin failed. Using ASPXAUTH from .env instead.")
+            cprint("legacyLogin failed. Using ASPXAUTH from .env instead.", "yellow")
+            return fallback
 
-        # with requests.session() as s:
-        #     print("Generating .ASPXAUTH token")
-        #     resp = s.post(
-        #         "https://ubc.ca.panopto.com/Panopto/Pages/Auth/Login.aspx?",
-        #         data=payload,
-        #         headers=headers,
-        #     )
-        #     cookie_dict = resp.cookies.get_dict()
-            # return cookie_dict[".ASPXAUTH"]
-
-            # Temporary workaround - add ASPXAUTH to .env
+        raise RuntimeError(
+            f"Could not get a .ASPXAUTH cookie from legacyLogin (last status {resp.status_code})"
+        )
 
     def download_video(self, session_id, output_folder):
         """
         Download's video file from Panopto session (session_id) to output folder
         """
-        load_dotenv()
-        server = os.getenv("SERVER")
-
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15",
-            "Content-Type": "video/mp4",
-            "Cookie": ".ASPXAUTH=" + self.__get_aspxauth_token(),
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 12.4; rv:101.0) Gecko/20100101 Firefox/101.0",
+            "Cookie": ".ASPXAUTH=" + self.get_aspxauth_cookie(),
         }
 
-        url = f"https://{server}/Panopto/Pages/Viewer/DeliveryInfo.aspx?deliveryId={session_id}&responseType=json"
-        payload = {"deliveryId": session_id, "responseType": "json"}
-        resp = requests.request("GET", url=url, headers=headers)
+        url = f"https://{self.server}/Panopto/Pages/Viewer/DeliveryInfo.aspx"
+        params = {"deliveryId": session_id, "responseType": "json"}
+        resp = requests.get(url=url, params=params, headers=headers)
 
         if resp.status_code != 200:
             raise RuntimeError(
-                f"Download response came with status code {resp.status_code}\nCheck ASPXAUTH token."
+                f"DeliveryInfo response came with status code {resp.status_code} for session {session_id}"
             )
-        delivery_info = json.loads(resp.text)
+        delivery_info = resp.json()
         if "ErrorMessage" in delivery_info.keys():
             message = delivery_info["ErrorMessage"]
             raise RuntimeError(
-                f"Download response came with message: {message}\nCheck ASPXAUTH token."
+                f"DeliveryInfo response came with message: {message} (session {session_id})"
             )
 
-        streams = delivery_info["Delivery"]["Streams"]
-
-        # if len(streams) == 1:
-        download_url = delivery_info["DownloadUrl"]
-        print("Downloading stingle stream...")
-        dest_filename = os.path.join(output_folder, "primary.mp4")
-        with requests.get(url=download_url, headers=headers, allow_redirects=True, stream=True) as r:
-            r.raise_for_status()
-            with open(dest_filename, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-                
         # CHANGED BEHAVIOUR JAN 2022
         # Whereas we used to download each stream individually, API changes have
         # made this difficult. We now download each sessions "podcast" file.
-        
-        #     for stream in streams:
-        #         if stream["StreamType"] == 1:
-        #             filename = "primary.mp4"
-        #         elif stream["StreamType"] == 2:
-        #             filename = "secondary.mp4"
-        #         else:
-        #             raise ValueError
+        download_url = f"https://{self.server}/Panopto/Podcast/Download/{session_id}.mp4?mediaTargetType=videoPodcast"
+        print(f"DOWNLOAD_URL: {download_url}")
+        print("Downloading single stream...")
+        dest_filename = os.path.join(output_folder, "primary.mp4")
 
-        #         dest_filename = os.path.join(output_folder, filename)
-        #         print("Downloading to: ", dest_filename)
-        #         ydl_opts = {"outtmpl": dest_filename, "quiet": True}
-        #         print(stream["StreamUrl"])
-        #         try:
-        #             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        #                 ydl.download([stream["StreamUrl"]])
-        #         except Exception as error:
-        #             print(error)
-        
+        try:
+            with requests.get(url=download_url, headers=headers, allow_redirects=True, stream=True) as r:
+                r.raise_for_status()
+                with open(dest_filename, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):
+                        f.write(chunk)
+        except Exception as err:
+            if os.path.exists(dest_filename):
+                os.remove(dest_filename)
+            raise RuntimeError(
+                f"Could not download podcast file for session {session_id}. "
+                f"Ensure that podcast is enabled for video under Overview > Downloads. ({err})"
+            ) from err
 
     def __get_session(self, session_id):
         """
         Call GET /api/v1/sessions/{id} API and return the response
         """
-        while True:
-            url = "https://{0}/Panopto/api/v1/sessions/{1}".format(
-                self.server, session_id
-            )
-            resp = self.requests_session.get(url=url)
-            if self.__inspect_response_is_retry_needed(resp):
-                continue
-            data = resp.json()
-            break
-        return data
+        url = "https://{0}/Panopto/api/v1/sessions/{1}".format(self.server, session_id)
+        return self.__request("GET", url).json()
 
     def get_containing_folder(self, delivery_id):
         """
@@ -237,6 +219,45 @@ class Panopto:
         # step 5 - monitor the progress of processing
         self.__monitor_progress(upload_id)
 
+        return upload_id
+
+    def get_upload_state(self, upload_id):
+        """
+        Current sessionUpload "State" of an upload (see the constants at the top)
+        """
+        url = "https://{0}/Panopto/PublicAPI/REST/sessionUpload/{1}".format(
+            self.server, upload_id
+        )
+        return self.__request("GET", url).json()["State"]
+
+    def wait_for_processing(self, upload_ids, timeout_seconds, poll_seconds=30):
+        """
+        Poll uploads until Panopto has finished processing each one (COMPLETE)
+        or reports a failure, or until timeout_seconds has passed.
+        Returns {upload_id: last state seen}; a failed status check is reported as None.
+        """
+        states = {upload_id: None for upload_id in upload_ids}
+        pending = set(upload_ids)
+        deadline = time.time() + timeout_seconds
+
+        while pending:
+            for upload_id in list(pending):
+                try:
+                    state = self.get_upload_state(upload_id)
+                except Exception as err:
+                    logging.warning("Could not check upload %s: %s", upload_id, err)
+                    continue
+                states[upload_id] = state
+                if state == COMPLETE or state in (UPLOAD_CANCELLED, PROCESSING_ERROR) or state > COMPLETE:
+                    pending.discard(upload_id)
+
+            if not pending or time.time() >= deadline:
+                break
+            print(f"  {len(pending)} video(s) still processing in Panopto...")
+            time.sleep(poll_seconds)
+
+        return states
+
     def __enumerate_files(self, folder):
         """
         Return the list of files in the specified folder. Not to traverse sub folders.
@@ -257,16 +278,10 @@ class Panopto:
         Create an upload session. Return sessionUpload object.
         """
         print("")
-        while True:
-            print("Calling POST PublicAPI/REST/sessionUpload endpoint")
-            url = "https://{0}/Panopto/PublicAPI/REST/sessionUpload".format(self.server)
-            payload = {"FolderId": folder_id}
-            headers = {"content-type": "application/json"}
-            resp = self.requests_session.post(url=url, json=payload, headers=headers)
-            if not self.__inspect_response_is_retry_needed(resp):
-                break
-
-        session_upload = resp.json()
+        print("Calling POST PublicAPI/REST/sessionUpload endpoint")
+        url = "https://{0}/Panopto/PublicAPI/REST/sessionUpload".format(self.server)
+        payload = {"FolderId": folder_id}
+        session_upload = self.__request("POST", url, json=payload).json()
         print("  ID: {0}".format(session_upload["ID"]))
         print("  target: {0}".format(session_upload["UploadTarget"]))
         return session_upload
@@ -294,12 +309,19 @@ class Panopto:
         # Create S3 client with custom endpoint on Panopto server.
         # Panopto server does not refer access key or secret, but the library needs
         # some values to start, otherwise no credentials error is thrown.
+        # boto3 >= 1.36 adds checksums by default and sends uploads "aws-chunked";
+        # Panopto's endpoint doesn't support that and ends up with unusable files
+        # ("No streams"). "when_required" restores the plain uploads of older boto3.
         s3 = boto3.session.Session().client(
             service_name="s3",
             endpoint_url=service_endpoint,
             verify=self.ssl_verify,
             aws_access_key_id="dummy",
             aws_secret_access_key="dummy",
+            config=Config(
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            ),
         )
 
         # Initiate multipart upload.
@@ -330,23 +352,22 @@ class Panopto:
                 )
                 i += 1
 
-        # Complete
-        try:
-            result = s3.complete_multipart_upload(
-                Bucket=bucket,
-                Key=object_key,
-                UploadId=mpu_id,
-                MultipartUpload={"Parts": parts},
-            )
-        except ClientError as err:
-            cprint(err, "red")
-            cprint("Retrying operation...", "yellow")
+        # Complete (one retry)
+        for attempt in range(2):
             try:
-                result = s3.complete_multipart_upload
+                s3.complete_multipart_upload(
+                    Bucket=bucket,
+                    Key=object_key,
+                    UploadId=mpu_id,
+                    MultipartUpload={"Parts": parts},
+                )
+                break
             except ClientError as err:
                 cprint(err, "red")
-                cprint("FAILED -- Tried multipart upload twice")
-                raise RuntimeError(f"Could not upload to {upload_target}")
+                if attempt == 1:
+                    cprint("FAILED -- Tried multipart upload twice", "red")
+                    raise RuntimeError(f"Could not upload to {upload_target}") from err
+                cprint("Retrying operation...", "yellow")
 
         print("  -- complete called.")
 
@@ -355,59 +376,50 @@ class Panopto:
         Finish upload.
         """
         upload_id = session_upload["ID"]
-        upload_target = session_upload["UploadTarget"]
 
-        while True:
-            print(
-                "Calling PUT PublicAPI/REST/sessionUpload/{0} endpoint".format(
-                    upload_id
-                )
-            )
-            url = "https://{0}/Panopto/PublicAPI/REST/sessionUpload/{1}".format(
-                self.server, upload_id
-            )
-            payload = copy.copy(session_upload)
-            payload["State"] = 1  # Upload Completed
-            headers = {"content-type": "application/json"}
+        print("Calling PUT PublicAPI/REST/sessionUpload/{0} endpoint".format(upload_id))
+        url = "https://{0}/Panopto/PublicAPI/REST/sessionUpload/{1}".format(
+            self.server, upload_id
+        )
+        payload = copy.copy(session_upload)
+        payload["State"] = UPLOAD_COMPLETED
+
+        for attempt in range(MAX_FINISH_RETRIES):
             try:
-                resp = self.requests_session.put(url=url, json=payload, headers=headers)
-            except Exception as err:
-                # This exception gets triggered if the video takes a long time to upload
+                self.__request("PUT", url, json=payload)
+                break
+            except requests.exceptions.RequestException as err:
+                # This gets triggered if the video takes a long time to upload
                 # Regenerating the token resolves it
                 cprint(err, "red")
-                cprint(type(err), "red")
-                logging.warning(err)
-                logging.warning("Video upload timeout. Regenerating token")
+                logging.warning("Finishing upload failed (%s). Regenerating token", err)
+                if attempt == MAX_FINISH_RETRIES - 1:
+                    raise
                 self.__setup_or_refresh_access_token()
-                continue
-            if not self.__inspect_response_is_retry_needed(resp):
-                break
         print("  done")
 
     def __monitor_progress(self, upload_id):
         """
-        Polling status API until process completes.
+        Polling status API until Panopto has accepted the upload.
+        We stop at PROCESSING rather than waiting for processing to complete.
         """
         print("")
-        while True:
+        url = "https://{0}/Panopto/PublicAPI/REST/sessionUpload/{1}".format(
+            self.server, upload_id
+        )
+        deadline = time.time() + MONITOR_TIMEOUT_SECONDS
+        while time.time() < deadline:
             time.sleep(5)
-            print(
-                "Calling GET PublicAPI/REST/sessionUpload/{0} endpoint".format(
-                    upload_id
-                )
-            )
-            url = "https://{0}/Panopto/PublicAPI/REST/sessionUpload/{1}".format(
-                self.server, upload_id
-            )
-            resp = self.requests_session.get(url=url)
-            if self.__inspect_response_is_retry_needed(resp):
-                # If we get Unauthorized and token is refreshed, ignore the response at this time and wait for next time.
-                continue
-            session_upload = resp.json()
-            print("  State: {0}".format(session_upload["State"]))
+            print("Calling GET PublicAPI/REST/sessionUpload/{0} endpoint".format(upload_id))
+            state = self.__request("GET", url).json()["State"]
+            print("  State: {0}".format(state))
 
-            # original value below was 4
-            # I'm changing this to 3 because I don't want to wait for videos to completely process
-            if session_upload["State"] == 3:
+            if state in (PROCESSING, COMPLETE):
                 logging.info("Successfully uploaded video!")
-                break
+                return
+            if state in (UPLOAD_CANCELLED, PROCESSING_ERROR) or state > COMPLETE:
+                raise RuntimeError(f"Panopto upload {upload_id} failed with state {state}")
+
+        raise RuntimeError(
+            f"Timed out waiting for Panopto to accept upload {upload_id}"
+        )

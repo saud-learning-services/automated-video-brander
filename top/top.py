@@ -1,10 +1,5 @@
-from moviepy.editor import VideoClip, VideoFileClip, CompositeVideoClip
-from moviepy.video.fx.fadein import fadein
-from moviepy.video.fx.fadeout import fadeout
-from moviepy.audio.fx.audio_fadeout import audio_fadeout
-from helpers import clear_folder_contents
+from moviepy import VideoClip, VideoFileClip, CompositeVideoClip, vfx, afx
 import gizeh as gz
-import os
 
 
 class Top:
@@ -42,20 +37,25 @@ class Top:
         text_clip_mask = VideoClip(
             lambda t: self._make_frame(t)[:, :, 3] / 255.0,
             duration=slate.duration,
-            ismask=True,
+            is_mask=True,
         )
         text_clip = VideoClip(
             lambda t: self._make_frame(t)[:, :, :3], duration=slate.duration
-        ).set_mask(text_clip_mask)
+        ).with_mask(text_clip_mask)
 
         # add fadein and fadeout (to white)
-        text_clip = text_clip.fx(fadein, duration=1, initial_color=[255, 255, 255])
-        text_clip = text_clip.fx(fadeout, duration=1, final_color=[255, 255, 255])
+        text_clip = text_clip.with_effects(
+            [
+                vfx.FadeIn(1, initial_color=[255, 255, 255]),
+                vfx.FadeOut(1, final_color=[255, 255, 255]),
+            ]
+        )
 
         final_clip = CompositeVideoClip([slate, text_clip])
 
-        final_clip = final_clip.fx(fadeout, duration=1.5, final_color=[255, 255, 255])
-        final_clip = final_clip.fx(audio_fadeout, duration=1)
+        final_clip = final_clip.with_effects(
+            [vfx.FadeOut(1.5, final_color=[255, 255, 255]), afx.AudioFadeOut(1)]
+        )
 
         return final_clip
 

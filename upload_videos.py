@@ -1,12 +1,24 @@
 import os
+import json
+import time
 import logging
 import datetime
 import codecs
 from termcolor import cprint
 from dotenv import load_dotenv
-from helpers import load_specifications, get_video_attributes
+from helpers import load_specifications, get_video_attributes, send_notification, delivery_id_from_url
 from panopto.panopto_oauth2 import PanoptoOAuth2
-from panopto.panopto_interface import Panopto
+from panopto.panopto_interface import Panopto, UPLOAD_COMPLETED, PROCESSING, COMPLETE
+
+# How long a run waits for Panopto to process its uploads. Rejected files fail
+# quickly; long videos still processing after this are checked by later runs.
+DEFAULT_PROCESSING_TIMEOUT_MINUTES = 30
+
+# Report an upload that is still processing after this many hours
+MAX_PENDING_HOURS = 24
+
+# Uploads still processing at the end of a run, checked by the next runs
+PENDING_UPLOADS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pending_uploads.json")
 
 
 def upload_videos():
@@ -19,10 +31,14 @@ def upload_videos():
     server = os.getenv("SERVER")
     client_id = os.getenv("CLIENT_ID")
     client_secret = os.getenv("CLIENT_SECRET")
-
     oauth2 = PanoptoOAuth2(server, client_id, client_secret, True)
 
+    msg = " INFO Beginning uploads"
+    send_notification(msg,"INFO")
+
     panopto = Panopto(server, True, oauth2)
+    uploads = {}  # upload_id: video title
+    requested = len(specs.index)  # specs is reused for each row below
     for index, row in specs.iterrows():
         print("\n------------------------------------------\n")
 
@@ -57,40 +73,60 @@ def upload_videos():
         print(f"INSTRUCTOR NAME: {instructor_name}")
         print(f"UNIQUE ID: {video_id}\n")
 
-        # URL must begin with 'https://ubc.ca.panopto.com'
-        panopto_instance = src_url[:27]
-        if panopto_instance != "https://ubc.ca.panopto.com/":
-            cprint(
-                f"\nThe source URL provided ({src_url}) is not a UBC panopto instance",
-                "red",
-            )
-            cprint(f'Skipping upload for video: "{video_title}"...\n', "red")
-            logging.error(
-                'The source URL provided: "%s" is not a UBC panopto instance. Skipping video: %s',
-                src_url,
-                video_title,
-            )
-            continue
-
-        # delivery id is in last 36 characters of URL
-        delivery_id = src_url[-36:]
-
-        panopto_folder_name, panopto_folder_id = panopto.get_containing_folder(
-            delivery_id
-        )
-
         # folder containing the streams to upload
         local_folder_path = f"output/{video_title}_{instructor_name}_{video_id}"
 
         if not instructor_name:
             local_folder_path = f"output/{video_title}_{video_id}"
 
+        if not os.path.isdir(local_folder_path) or not os.listdir(local_folder_path):
+            # an earlier step failed (already notified), nothing to upload
+            logging.info("No branded video in %s. Skipping...", local_folder_path)
+            continue
+
+        # URL must be on our Panopto instance (SERVER in .env)
+        if not src_url.startswith(f"https://{server}/"):
+            cprint(
+                f"\nThe source URL provided ({src_url}) is not on {server}",
+                "red",
+            )
+            cprint(f'Skipping upload for video: "{video_title}"...\n', "red")
+            logging.error(
+                'The source URL provided: "%s" is not on %s. Skipping video: %s',
+                src_url,
+                server,
+                video_title,
+            )
+            send_notification(f" ERROR Not UBC Panopto instance: {video_title}, URL: {src_url}", "ERROR")
+            continue
+
+        # delivery id is in last 36 characters of URL
+        #delivery_id = src_url[-36:]
+        delivery_id = delivery_id_from_url(src_url) # function uses regex pattern to find uuid in url supplied by user input 
+                                                    # - users don't always submit correct link from sharing page.
+        
+        if delivery_id == 0: # there was no delivery id found in the url supplied by user input
+            send_notification(f" ERROR no delivery id found to upload entry: {video_id}, {src_url}", "ERROR")
+            continue
+        elif delivery_id == 99: # there was more than 1 delivery id found in the url supplied by user input, should only be 1
+            send_notification(f" ERROR too many delivery ids found to upload entry: {video_id}, {src_url}", "ERROR")
+            continue
+
+        try:
+            panopto_folder_name, panopto_folder_id = panopto.get_containing_folder(
+                delivery_id
+            )
+        except Exception as err:
+            cprint(err, "red")
+            send_notification(f" ERROR Could not find Panopto folder for {video_title}: {err}", "ERROR")
+            continue
+
         # manifest cannot have '&' character in it
 
         manifest_title = f"{__normalize_title(video_title)}_branded"
         try:
             __create_manifest(local_folder_path, manifest_title)
-        except RuntimeError as err:
+        except Exception as err:
             cprint("\nERROR: Could not create manifest", "red")
             logging.error(
                 "Could not create manifest for video: %s. Skipping...", video_title
@@ -98,6 +134,7 @@ def upload_videos():
             logging.error(err)
             cprint(err, "red")
             print("")
+            send_notification(f" ERROR Could not create manifest. Skipping video: {video_title}", "ERROR")
             continue
 
         cprint(
@@ -107,8 +144,9 @@ def upload_videos():
 
         try:
 
-            panopto.upload_folder(local_folder_path, panopto_folder_id)
-            cprint("UPLOAD COMPLETED\n", "green")
+            upload_id = panopto.upload_folder(local_folder_path, panopto_folder_id)
+            uploads[upload_id] = video_title
+            cprint("UPLOAD COMPLETED (Panopto is processing it)\n", "green")
             cprint(f"   video: {video_title}", "blue")
             cprint(f"   src folder: {local_folder_path}", "blue")
             cprint(f"   destination (panopto): {panopto_folder_name}", "blue")
@@ -120,6 +158,136 @@ def upload_videos():
                 local_folder_path,
                 video_title,
             )
+            send_notification(f" ERROR Upload file not found. Skipping video: {local_folder_path}, row: {video_title}", "ERROR")
+        except Exception as err:
+            cprint(f"\nUpload failed for {video_title}: {err}", "red")
+            send_notification(f" ERROR Upload failed for {video_title}: {err}", "ERROR")
+            continue
+
+    ready, still_processing = __wait_for_panopto(panopto, uploads)
+    logging.info(
+        "Uploaded: %i of %i (%i still processing in Panopto)",
+        ready + still_processing, requested, still_processing,
+    )
+    return ready + still_processing, requested, still_processing
+
+
+def __wait_for_panopto(panopto, uploads):
+    """
+    Wait a while for Panopto to process the uploads ({upload_id: title}), which
+    catches files Panopto rejects. Long videos that are still processing at the
+    time limit are saved to pending_uploads.json and checked by later runs.
+    Returns (ready, still processing).
+    """
+    if not uploads:
+        return 0, 0
+
+    timeout_minutes = int(os.getenv("PROCESSING_TIMEOUT_MINUTES", DEFAULT_PROCESSING_TIMEOUT_MINUTES))
+    cprint(
+        f"\nWaiting for Panopto to process {len(uploads)} video(s) (up to {timeout_minutes} minutes)...",
+        "yellow",
+    )
+    states = panopto.wait_for_processing(list(uploads), timeout_minutes * 60)
+
+    ready = 0
+    still_processing = {}
+    for upload_id, title in uploads.items():
+        state = states[upload_id]
+        if state == COMPLETE:
+            ready += 1
+            cprint(f"   Ready in Panopto: {title}", "green")
+            logging.info("Ready in Panopto: %s (upload %s)", title, upload_id)
+        elif state in (PROCESSING, UPLOAD_COMPLETED, None):
+            still_processing[upload_id] = title
+            cprint(f"   Still processing in Panopto: {title} (checked again next run)", "yellow")
+            logging.info("Still processing in Panopto: %s (upload %s)", title, upload_id)
+        else:
+            __processing_failed(title, state, upload_id)
+
+    if still_processing:
+        pending = __load_pending_uploads()
+        for upload_id, title in still_processing.items():
+            pending[upload_id] = {"title": title, "uploaded_at": time.time()}
+        __save_pending_uploads(pending)
+        send_notification(
+            f" INFO Still processing in Panopto (normal for long videos), the next run checks them:"
+            f" {', '.join(still_processing.values())}",
+            "INFO",
+        )
+    return ready, len(still_processing)
+
+
+def check_earlier_uploads():
+    """
+    Check uploads that were still processing at the end of an earlier run.
+    Notifies when each is ready, fails, or is still not ready after MAX_PENDING_HOURS.
+    """
+    pending = __load_pending_uploads()
+    if not pending:
+        return
+
+    load_dotenv()
+    server = os.getenv("SERVER")
+    oauth2 = PanoptoOAuth2(server, os.getenv("CLIENT_ID"), os.getenv("CLIENT_SECRET"), True)
+    panopto = Panopto(server, True, oauth2)
+
+    cprint(f"\nChecking {len(pending)} video(s) still processing from earlier runs...", "yellow")
+    remaining = {}
+    for upload_id, info in pending.items():
+        title = info["title"]
+        try:
+            state = panopto.get_upload_state(upload_id)
+        except Exception as err:
+            logging.warning("Could not check upload %s (%s): %s", upload_id, title, err)
+            remaining[upload_id] = info
+            continue
+
+        if state == COMPLETE:
+            cprint(f"   Ready in Panopto: {title}", "green")
+            send_notification(f" INFO Now ready in Panopto: {title}", "INFO")
+        elif state in (PROCESSING, UPLOAD_COMPLETED):
+            hours = (time.time() - info["uploaded_at"]) / 3600
+            if hours > MAX_PENDING_HOURS:
+                send_notification(
+                    f" ERROR {title} is still not processed after {MAX_PENDING_HOURS} hours."
+                    f" Check it in Panopto (upload {upload_id}).",
+                    "ERROR",
+                )
+            else:
+                remaining[upload_id] = info
+        else:
+            __processing_failed(title, state, upload_id)
+
+    __save_pending_uploads(remaining)
+
+
+def __processing_failed(title, state, upload_id):
+    send_notification(
+        f" ERROR Panopto could not process {title} (state {state}, upload {upload_id})."
+        f" The session will show no content.",
+        "ERROR",
+    )
+
+
+def __load_pending_uploads():
+    if not os.path.exists(PENDING_UPLOADS_FILE):
+        return {}
+    try:
+        with open(PENDING_UPLOADS_FILE) as f:
+            return json.load(f)
+    except (OSError, ValueError) as err:
+        logging.error("Could not read %s: %s", PENDING_UPLOADS_FILE, err)
+        return {}
+
+
+def __save_pending_uploads(pending):
+    if not pending:
+        if os.path.exists(PENDING_UPLOADS_FILE):
+            os.remove(PENDING_UPLOADS_FILE)
+        return
+    with open(PENDING_UPLOADS_FILE, "w") as f:
+        json.dump(pending, f, indent=2)
+
 
 
 def __create_manifest(target_folder, video_title):

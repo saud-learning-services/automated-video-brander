@@ -4,15 +4,20 @@ import time
 # import json
 # import requests
 import pickle
-import pprint
+import logging
 import webbrowser
 from http.server import BaseHTTPRequestHandler
 from socketserver import ThreadingTCPServer
+from oauthlib.oauth2 import LegacyApplicationClient
 from requests_oauthlib import OAuth2Session
+from helpers import send_notification
 
 # This code uses this local URL as redirect target for Authorization Code Grant (Server-side Web Application)
 REDIRECT_URL = 'http://localhost:9127/redirect'
 REDIRECT_PORT = 9127
+
+# How long to wait for someone to approve a browser login before failing the run
+BROWSER_LOGIN_TIMEOUT_SECONDS = 15 * 60
 
 # Typical scope for accessing Panopto API.
 DEFAULT_SCOPE = ('openid', 'api')
@@ -45,6 +50,59 @@ class PanoptoOAuth2():
         # This should not be applied if the redirect is hosted by actual server (not localhost).
         os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
+    def get_access_token(self):
+        '''
+        Get an access token without user interaction where possible:
+         1. Refresh the cached token (normal case).
+         2. Resource Owner Password Grant with PANOPTO_USERNAME / PANOPTO_PASSWORD,
+            if set. Only works if the API client is a "User Based Server Application".
+         3. Browser login (Authorization Code Grant). Needs someone at the Mac.
+        '''
+        access_token = self.__get_refreshed_access_token()
+        if access_token:
+            return access_token
+
+        access_token = self.__get_access_token_password_grant()
+        if access_token:
+            return access_token
+
+        logging.error('Panopto refresh token failed. Falling back to browser login.')
+        send_notification(
+            ' ERROR Panopto login needs a person: approve the browser window on the automation Mac',
+            'ERROR')
+        return self.get_access_token_authorization_code_grant()
+
+    def __get_access_token_password_grant(self):
+        '''
+        Private method of the class.
+        Get an access token with the Panopto username and password from .env.
+        Returning None if not configured or failing for any reason.
+        '''
+        username = os.getenv('PANOPTO_USERNAME')
+        password = os.getenv('PANOPTO_PASSWORD')
+        if not username or not password:
+            return None
+
+        try:
+            print()
+            print('Get a new access token by using Panopto username and password.')
+            session = OAuth2Session(
+                client=LegacyApplicationClient(client_id=self.client_id))
+            session.verify = self.ssl_verify
+            token = session.fetch_token(
+                token_url=self.access_token_endpoint,
+                username=username,
+                password=password,
+                client_id=self.client_id,
+                client_secret=self.client_secret,
+                scope=list(DEFAULT_SCOPE))
+            return token['access_token']
+
+        except Exception as e:
+            print('Failed to get access token with password: ' + str(e))
+            logging.warning('Password grant failed: %s', e)
+            return None
+
     def get_access_token_authorization_code_grant(self):
         '''
         Get OAuth2 access token by Authorization Code Grant (Server-side Web Application).
@@ -59,12 +117,7 @@ class PanoptoOAuth2():
          5. Save the token object, which includes refersh_token, for later refrehsh operation.
         '''
 
-        # First, try getting a new access token from refesh token.
-        access_token = self.__get_refreshed_access_token()
-        if access_token:
-            return access_token
-
-        # Then, fallback to the full autorization path. Offline access scope is needed to get refresh token.
+        # Fallback to the full autorization path. Offline access scope is needed to get refresh token.
         scope = list(DEFAULT_SCOPE) + ['offline_access']
         session = OAuth2Session(
             self.client_id, scope=scope, redirect_uri=REDIRECT_URL)
@@ -83,11 +136,17 @@ class PanoptoOAuth2():
         with RedirectTCPServer() as httpd:
             print('HTTP server started at port {0}. Waiting for redirect.'.format(
                 REDIRECT_PORT))
-            # Serve one request.
+            # Serve one request. Give up if nobody approves the login in time,
+            # so an unattended run fails instead of hanging forever.
+            httpd.timeout = BROWSER_LOGIN_TIMEOUT_SECONDS
             httpd.handle_request()
             # The property may not be readable immediately. Wait until it becomes valid.
-            while httpd.last_get_path is None:
+            for _ in range(10):
+                if httpd.last_get_path is not None:
+                    break
                 time.sleep(1)
+            if httpd.last_get_path is None:
+                raise RuntimeError('Timed out waiting for Panopto browser login')
             redirected_path = httpd.last_get_path
 
         print()
@@ -136,9 +195,9 @@ class PanoptoOAuth2():
         '''
         with open(self.cache_file, 'wb') as fw:
             pickle.dump(token, fw)
-        print('OAuth2 flow provided the token below. Cache it to {0}'.format(
-            self.cache_file))
-        pprint.pprint(token, indent=4)
+        os.chmod(self.cache_file, 0o600)
+        # Don't print the token itself: it ends up in terminal scrollback and logs
+        print('OAuth2 token cached to {0}'.format(self.cache_file))
 
 
 class RedirectTCPServer(ThreadingTCPServer):

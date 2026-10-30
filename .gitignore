@@ -42,3 +42,14 @@ input/specs.csv
 panopto/sauder_login_payload.json
 
 local
+# never commit credentials, OAuth token caches or the internal LS guide (contains secrets)
+.env~
+*.cache
+saud-ls-brander-package/
+.DS_Store
+
+brander.lock
+*~
+
+# long videos still processing in Panopto, checked by later runs
+pending_uploads.json
