@@ -84,8 +84,13 @@ def __run():
         return
 
     # Get data from google forms - archive previous spec sheet
-    google = GoogleFormInterface()
-    run_started = google.generate_specs()
+    try:
+        google = GoogleFormInterface()
+        run_started = google.generate_specs()
+    except Exception as err:
+        cprint(f"\nCould not read the Google Form responses: {err}", "red")
+        send_notification(f" ERROR Could not read the Google Form responses, nothing processed. ({err})", "ERROR")
+        return
     google.save_last_run(run_started)
 
     # 1

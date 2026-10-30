@@ -130,13 +130,21 @@ def archive_previous_specs():
 
 def __get_last_run_time():
     """
+    Read google_client/LastRun.txt. Raises RuntimeError saying what's wrong if
+    the file is missing or not in the form LastRun=MM/DD/YYYY HH:MM:SS
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
+    path = f"{current_dir}/LastRun.txt"
 
-    with open(f"{current_dir}/LastRun.txt", "r") as f:
-        timestamp_string = f.read()
-    timestamp_string = timestamp_string.split("=")[1].strip()
-    return __parse_timestamp(timestamp_string)
+    try:
+        with open(path, "r") as f:
+            contents = f.read().strip()
+        return __parse_timestamp(contents.split("=", 1)[1].strip())
+    except (OSError, IndexError, ValueError) as err:
+        raise RuntimeError(
+            f"google_client/LastRun.txt is not valid ({err}). It must contain one line like "
+            f"LastRun=10/30/2026 13:00:00 (MM/DD/YYYY HH:MM:SS)"
+        ) from err
 
 
 def save_last_run_time(now):
