@@ -1,6 +1,9 @@
 import os
-import sys
 import shutil
+import re
+import time
+import logging
+import requests
 from zipfile import ZipFile
 from termcolor import cprint
 from datetime import datetime
@@ -27,15 +30,11 @@ def load_specifications(path):
     try:
         specs = pd.read_csv(path + "/specs.csv", dtype={"Section": "str"})
     except IOError as error:
-        cprint("\nError loading CSV:", "red")
-        cprint(f"{error}\n", "red", attrs=["dark"])
-        sys.exit()
-    except ParserError:
-        cprint("\nERROR: Could not parse specs.csv, ensure correctly formatted.", "red")
-        sys.exit()
-    except EmptyDataError:
-        cprint("\nERROR: Ensure specs.csv has data.", "red")
-        sys.exit()
+        raise RuntimeError(f"Error loading specs.csv: {error}") from error
+    except ParserError as error:
+        raise RuntimeError("Could not parse specs.csv, ensure correctly formatted.") from error
+    except EmptyDataError as error:
+        raise RuntimeError("Ensure specs.csv has data.") from error
 
     expected_cols = {
         "Id",
@@ -54,9 +53,9 @@ def load_specifications(path):
 
     # Check that we have all the columns we expect
     if expected_cols != actual_cols:
-        cprint("\nERROR: Missing or incorrect columns in specs.csv", "red")
-        cprint(f"Expected columns: {expected_cols}\n")
-        sys.exit()
+        raise RuntimeError(
+            f"Missing or incorrect columns in specs.csv. Expected columns: {expected_cols}"
+        )
 
     return specs
 
@@ -249,8 +248,87 @@ def clear_folder_contents(folder_path):
         except Exception as e:
             print("Failed to delete %s. Reason: %s" % (file_path, e))
 
-    # TODO Delete
-    # for subdir in os.listdir(folder_path):
-    #     if subdir not in (".gitkeep", ".DS_Store", "archive"):
-    #         subdir_path = f"{folder_path}/{subdir}"
-    #         shutil.rmtree(subdir_path, ignore_errors=False, onerror=None)
+def send_notification(payload, status_level):
+    """Send a push notification via ntfy.sh (or your own ntfy server)
+
+    The topic URL is read from NTFY_URL in .env. Notifications are best-effort:
+    a failure is logged but never stops the brander.
+
+    Args:
+        payload (text): Message to send to notification
+        status_level (text): Status of message to notify; currently INFO, and ERROR
+
+    Returns:
+        0: INFO status notified
+        1: ERROR status notified
+        99: UNKNOWN status notified
+    """
+    tags = {"INFO": "heavy_check_mark", "ERROR": "warning"}
+    codes = {"INFO": 0, "ERROR": 1}
+    if status_level not in tags:
+        status_level = "UNKNOWN"
+
+    logging.log(logging.ERROR if status_level != "INFO" else logging.INFO, payload.strip())
+
+    ntfy_url = os.getenv("NTFY_URL")
+    if not ntfy_url:
+        return codes.get(status_level, 99)
+
+    now_formatted = datetime.now().strftime("  %Y-%m-%d %H:%M:%S")
+    try:
+        response = requests.post(
+            ntfy_url,
+            data=payload.encode("utf-8"),
+            headers={
+                "Title": status_level + now_formatted,
+                "Tags": tags.get(status_level, "rotating_light"),
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as err:
+        logging.warning("Could not send notification: %s", err)
+
+    return codes.get(status_level, 99)
+
+
+def delete_old_archives(folder_path, days):
+    """
+    Deletes .zip files in {folder_path}/archive older than {days} days.
+    Keeps the archives of downloaded/branded videos from filling the disk.
+    """
+    archive_folder = f"{folder_path}/archive"
+    if not os.path.isdir(archive_folder):
+        return
+
+    cutoff = time.time() - days * 24 * 60 * 60
+    for filename in os.listdir(archive_folder):
+        file_path = os.path.join(archive_folder, filename)
+        if filename.endswith(".zip") and os.path.getmtime(file_path) < cutoff:
+            os.remove(file_path)
+            logging.info("Deleted old archive: %s", file_path)
+
+
+def delivery_id_from_url(src_url):
+    """
+    Find UUID in text of URL submitted and return just the UUID if found
+
+    Args:
+        src_url: Source URL submitted by user. Should contain Panopto session delivery id in uuidv4 format.
+
+    Returns:
+        0:  UUID not found in url/embed code. 
+        99: more than 1 UUID found in url/embed code. 
+        UUID: If only 1 uuid found, returns the text of the uuid found in url or embed code submitted
+    """
+    str = src_url
+    var_r = ""
+    p = '[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}' #UUID v1-5 regular expression pattern
+    r = re.findall ( p, str) #check how many uuid's we find in user submission
+    if len(r)==0:
+        return 0
+    elif len(r)>1:
+        return 99
+    else: #we have only one and we can use to attempt the download
+        var_r = r[0]
+        return var_r

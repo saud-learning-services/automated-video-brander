@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 import gspread
 from dotenv import load_dotenv
 import google.auth
@@ -9,7 +10,8 @@ from .google_spec_helpers import (
     requires_more_edits,
     translate_video_properties,
     remove_previously_run_videos,
-    archive_previous_specs
+    archive_previous_specs,
+    save_last_run_time
 )
 
 SCOPES = ['https://spreadsheets.google.com/feeds',
@@ -39,12 +41,13 @@ class GoogleFormInterface:
         '''
         '''
 
-        # Create the specs DataFrame with necessary columns
+        # Create the specs with necessary columns
         columns = ['Id', 'Course', 'Section', 'Instructor', 'Title',
                    'Top Slate', 'Tail', 'Watermark', 'Watermark Position', 'Source URL']
-        specs = pd.DataFrame(columns=columns)
+        rows = []
 
         # Load the google-form data as DataFrame
+        run_started = datetime.now()
         form_data = self.__get_form_df()
 
         archive_previous_specs()
@@ -81,14 +84,24 @@ class GoogleFormInterface:
                 'Source URL': props['src_url']
             }
 
-            specs = specs.append(data, ignore_index=True)
+            rows.append(data)
 
         print('Writing output csv!')
         logging.info('Writing google form data to specs.csv...')
-        specs.to_csv('input/specs.csv', index=False)
+        pd.DataFrame(rows, columns=columns).to_csv('input/specs.csv', index=False)
+
+        return run_started
+
+    def save_last_run(self, run_started):
+        '''
+        Mark form responses up to run_started as handled.
+        Called by the brander once Panopto login has been confirmed, so a login
+        failure doesn't silently drop that run's requests.
+        '''
+        save_last_run_time(run_started)
 
     def __get_form_df(self):
-        '''å
+        '''
         '''
         sheet = self.client.open(self.spreadsheed).sheet1
         df = pd.DataFrame(sheet.get_all_records())
@@ -96,5 +109,6 @@ class GoogleFormInterface:
 
 
 if __name__ == '__main__':
+    # Preview only: writes specs.csv without marking the requests as handled
     google = GoogleFormInterface()
     google.generate_specs()

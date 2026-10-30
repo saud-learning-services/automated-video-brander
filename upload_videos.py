@@ -4,7 +4,7 @@ import datetime
 import codecs
 from termcolor import cprint
 from dotenv import load_dotenv
-from helpers import load_specifications, get_video_attributes
+from helpers import load_specifications, get_video_attributes, send_notification, delivery_id_from_url
 from panopto.panopto_oauth2 import PanoptoOAuth2
 from panopto.panopto_interface import Panopto
 
@@ -19,8 +19,10 @@ def upload_videos():
     server = os.getenv("SERVER")
     client_id = os.getenv("CLIENT_ID")
     client_secret = os.getenv("CLIENT_SECRET")
-
     oauth2 = PanoptoOAuth2(server, client_id, client_secret, True)
+
+    msg = " INFO Beginning uploads"
+    send_notification(msg,"INFO")
 
     panopto = Panopto(server, True, oauth2)
     for index, row in specs.iterrows():
@@ -57,40 +59,60 @@ def upload_videos():
         print(f"INSTRUCTOR NAME: {instructor_name}")
         print(f"UNIQUE ID: {video_id}\n")
 
-        # URL must begin with 'https://ubc.ca.panopto.com'
-        panopto_instance = src_url[:27]
-        if panopto_instance != "https://ubc.ca.panopto.com/":
-            cprint(
-                f"\nThe source URL provided ({src_url}) is not a UBC panopto instance",
-                "red",
-            )
-            cprint(f'Skipping upload for video: "{video_title}"...\n', "red")
-            logging.error(
-                'The source URL provided: "%s" is not a UBC panopto instance. Skipping video: %s',
-                src_url,
-                video_title,
-            )
-            continue
-
-        # delivery id is in last 36 characters of URL
-        delivery_id = src_url[-36:]
-
-        panopto_folder_name, panopto_folder_id = panopto.get_containing_folder(
-            delivery_id
-        )
-
         # folder containing the streams to upload
         local_folder_path = f"output/{video_title}_{instructor_name}_{video_id}"
 
         if not instructor_name:
             local_folder_path = f"output/{video_title}_{video_id}"
 
+        if not os.path.isdir(local_folder_path) or not os.listdir(local_folder_path):
+            # an earlier step failed (already notified), nothing to upload
+            logging.info("No branded video in %s. Skipping...", local_folder_path)
+            continue
+
+        # URL must be on our Panopto instance (SERVER in .env)
+        if not src_url.startswith(f"https://{server}/"):
+            cprint(
+                f"\nThe source URL provided ({src_url}) is not on {server}",
+                "red",
+            )
+            cprint(f'Skipping upload for video: "{video_title}"...\n', "red")
+            logging.error(
+                'The source URL provided: "%s" is not on %s. Skipping video: %s',
+                src_url,
+                server,
+                video_title,
+            )
+            send_notification(f" ERROR Not UBC Panopto instance: {video_title}, URL: {src_url}", "ERROR")
+            continue
+
+        # delivery id is in last 36 characters of URL
+        #delivery_id = src_url[-36:]
+        delivery_id = delivery_id_from_url(src_url) # function uses regex pattern to find uuid in url supplied by user input 
+                                                    # - users don't always submit correct link from sharing page.
+        
+        if delivery_id == 0: # there was no delivery id found in the url supplied by user input
+            send_notification(f" ERROR no delivery id found to upload entry: {video_id}, {src_url}", "ERROR")
+            continue
+        elif delivery_id == 99: # there was more than 1 delivery id found in the url supplied by user input, should only be 1
+            send_notification(f" ERROR too many delivery ids found to upload entry: {video_id}, {src_url}", "ERROR")
+            continue
+
+        try:
+            panopto_folder_name, panopto_folder_id = panopto.get_containing_folder(
+                delivery_id
+            )
+        except Exception as err:
+            cprint(err, "red")
+            send_notification(f" ERROR Could not find Panopto folder for {video_title}: {err}", "ERROR")
+            continue
+
         # manifest cannot have '&' character in it
 
         manifest_title = f"{__normalize_title(video_title)}_branded"
         try:
             __create_manifest(local_folder_path, manifest_title)
-        except RuntimeError as err:
+        except Exception as err:
             cprint("\nERROR: Could not create manifest", "red")
             logging.error(
                 "Could not create manifest for video: %s. Skipping...", video_title
@@ -98,6 +120,7 @@ def upload_videos():
             logging.error(err)
             cprint(err, "red")
             print("")
+            send_notification(f" ERROR Could not create manifest. Skipping video: {video_title}", "ERROR")
             continue
 
         cprint(
@@ -120,6 +143,14 @@ def upload_videos():
                 local_folder_path,
                 video_title,
             )
+            send_notification(f" ERROR Upload file not found. Skipping video: {local_folder_path}, row: {video_title}", "ERROR")
+        except Exception as err:
+            cprint(f"\nUpload failed for {video_title}: {err}", "red")
+            send_notification(f" ERROR Upload failed for {video_title}: {err}", "ERROR")
+            continue
+
+    send_notification(f" INFO Completed uploads", "INFO")
+
 
 
 def __create_manifest(target_folder, video_title):

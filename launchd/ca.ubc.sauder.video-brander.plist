@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Optional: run launcher.py in the background with launchd instead of a Terminal window.
+  launchd starts it at login and restarts it if it crashes.
+
+  Replace every /PATH/TO/... value, then see README > Running with launchd.
+  Don't also run start_brander.command at the same time.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ca.ubc.sauder.video-brander</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- python of the conda env: run `conda activate automated-editor-py315; which python` -->
+        <string>/PATH/TO/envs/automated-editor-py315/bin/python</string>
+        <string>launcher.py</string>
+    </array>
+
+    <!-- the project folder -->
+    <key>WorkingDirectory</key>
+    <string>/PATH/TO/automated-video-brander</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/PATH/TO/automated-video-brander/logs/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/PATH/TO/automated-video-brander/logs/launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- so ffmpeg from the conda env is found -->
+        <key>PATH</key>
+        <string>/PATH/TO/envs/automated-editor-py315/bin:/usr/bin:/bin</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

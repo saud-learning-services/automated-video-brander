@@ -5,8 +5,7 @@ import logging
 from termcolor import cprint
 
 from body.body import Body
-
-from helpers import load_specifications, get_video_attributes
+from helpers import load_specifications, get_video_attributes, send_notification
 
 
 def watermark():
@@ -17,7 +16,6 @@ def watermark():
     If a clip has a watermark, render it (with watermark) to body/PROCESSED folder
     It not, just move the clip over
     '''
-
     cprint('Deleting "PROCESSING" folder...', 'yellow')
     logging.info('Deleting "PROCESSING" folder...')
     __delete_processing_folder()
@@ -29,7 +27,7 @@ def watermark():
     root = os.path.dirname(os.path.abspath(__file__))
     specs = load_specifications(root + '/input')
 
-    print(root)
+    send_notification(f" INFO Beginning Watermarks", "INFO")
 
     for index, row in specs.iterrows():
         print('\n------------------------------------------\n')
@@ -65,6 +63,11 @@ def watermark():
             input_folder = f'{root}/input/body/{title}_{video_id}'
             output_folder = f'{root}/input/body/PROCESSED/{title}_{video_id}'
 
+        if not os.path.isdir(input_folder):
+            # download failed (already notified), nothing to watermark
+            logging.info('No downloaded video in %s. Skipping...', input_folder)
+            continue
+
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
@@ -81,7 +84,11 @@ def watermark():
                     body_clip = Body(
                         filename, input_video_file_path, output_video_file_path, watermark_path)
 
-                    body_clip.process_video(with_watermark=True)
+                    try:
+                        body_clip.process_video(with_watermark=True)
+                    except Exception as err:
+                        __watermark_failed(title, output_folder, err)
+                        break
                 else:
                     cprint(
                         'Clip does not need watermark, conforming to 1920x1080 and moving to PROCESSING folder', 'yellow')
@@ -93,13 +100,27 @@ def watermark():
                              output_video_file_path=output_video_file_path,
                              watermark_path=None)
                     )
-                    body_clip.process_video(with_watermark=False)
+                    try:
+                        body_clip.process_video(with_watermark=False)
+                    except Exception as err:
+                        __watermark_failed(title, output_folder, err)
+                        break
                     # copyfile(input_video_file_path, output_video_file_path)
             else:
                 cprint(f'Skipping {filename}, non-mp4 file in: {input_folder}')
                 logging.error(
                     'Skipping %s, non-mp4 file in: %s', filename, input_folder)
+                send_notification(f"ERROR non-mp4 file. Skipping video: {filename}, row: {input_folder}", "ERROR")
                 continue
+
+
+def __watermark_failed(title, output_folder, err):
+    """
+    Remove the partly processed video so later steps skip it, and notify
+    """
+    shutil.rmtree(output_folder, ignore_errors=True)
+    cprint(err, 'red')
+    send_notification(f"ERROR Watermarking failed for {title}: {err}", "ERROR")
 
 
 def __make_processing_folder():

@@ -2,9 +2,8 @@
 import os
 import logging
 from datetime import datetime
-import pandas as pd
 from termcolor import cprint
-from uuid import uuid1
+import uuid
 
 
 def requires_more_edits(video):
@@ -73,7 +72,7 @@ def translate_video_properties(video):
         video["Preferred Instructor(s) Name(s) (Optional. Maximum characters: 50)"]
     )
 
-    uid = str(uuid1())
+    uid = str(uuid.uuid4())
 
     # ** WORKAROUND SOLUTION FOR GENERIC UBC BRANDING **
 
@@ -101,22 +100,16 @@ def translate_video_properties(video):
 
 def remove_previously_run_videos(videos):
     """
+    Keep only form responses submitted after the last run.
+    Does not update LastRun.txt; call save_last_run_time() once the run is safe to commit.
     """
     last_run = __get_last_run_time()
 
-    columns = videos.columns
+    if videos.empty:
+        return videos
 
-    videos_trimmed = pd.DataFrame(columns=columns)
-
-    for index, video in videos.iterrows():
-        timestamp_string = str(video["Timestamp"])
-        timestamp = __parse_timestamp(timestamp_string)
-
-        if timestamp > last_run:
-            videos_trimmed = videos_trimmed.append(video)
-
-    __save_current_time()
-    return videos_trimmed
+    is_new = videos["Timestamp"].map(lambda ts: __parse_timestamp(str(ts)) > last_run)
+    return videos[is_new]
 
 
 def archive_previous_specs():
@@ -126,9 +119,13 @@ def archive_previous_specs():
     input_target = f"input/specs.csv"
     output_target = f"input/specs_archive/specs_({last_run_formatted}).csv"
 
+    if not os.path.exists(input_target):
+        return
+
     cprint(f"Archiving specs from: {last_run_formatted}", "yellow")
     logging.info("Archiving specs from: %s", last_run_formatted)
-    os.rename(input_target, output_target)
+    os.makedirs("input/specs_archive", exist_ok=True)
+    os.replace(input_target, output_target)
 
 
 def __get_last_run_time():
@@ -136,16 +133,16 @@ def __get_last_run_time():
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
-    f = open(f"{current_dir}/LastRun.txt", "r")
-    timestamp_string = f.read()
-    timestamp_string = timestamp_string.split("=")[1]
+    with open(f"{current_dir}/LastRun.txt", "r") as f:
+        timestamp_string = f.read()
+    timestamp_string = timestamp_string.split("=")[1].strip()
     return __parse_timestamp(timestamp_string)
 
 
-def __save_current_time():
+def save_last_run_time(now):
     """
+    Record {now} as the last run. Form responses up to this time won't be picked up again.
     """
-    now = datetime.now()
     now_formatted = now.strftime("%m/%d/%Y %H:%M:%S")
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
