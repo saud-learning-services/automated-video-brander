@@ -175,6 +175,7 @@ All logic for interfacing with panopto is in `panopto/panopto_interface.py`, exc
 - `/output` directory contents will be cleared on step 3 and its contents will be zipped in `/output/archive` (timestamped)
 - `/input/body` directory contents will be cleared on step 1 and its contents will be zipped in `/input/body/archive` (timestamped)
 - Archives older than `ARCHIVE_RETENTION_DAYS` (default 14) are deleted at the end of each run
+- After uploading, the brander waits up to `PROCESSING_TIMEOUT_MINUTES` (default 60) for Panopto to finish processing, and sends an error for any video that fails or isn't ready by then
 - Source clip (specified in Source URL in specs.) should be a single video clip with _approx. 3_ seconds before/after the speaker speaks
 - Watermark position defaults to bottom-right. Bottom left only if Watermark Position is **l** (in CSV)
 - Only supports single line titles (titles can not exceed 45 characters)

@@ -6,7 +6,10 @@ from termcolor import cprint
 from dotenv import load_dotenv
 from helpers import load_specifications, get_video_attributes, send_notification, delivery_id_from_url
 from panopto.panopto_oauth2 import PanoptoOAuth2
-from panopto.panopto_interface import Panopto
+from panopto.panopto_interface import Panopto, UPLOAD_COMPLETED, PROCESSING, COMPLETE
+
+# How long to wait for Panopto to finish processing the uploads
+DEFAULT_PROCESSING_TIMEOUT_MINUTES = 60
 
 
 def upload_videos():
@@ -25,7 +28,7 @@ def upload_videos():
     send_notification(msg,"INFO")
 
     panopto = Panopto(server, True, oauth2)
-    uploaded = 0
+    uploads = {}  # upload_id: video title
     requested = len(specs.index)  # specs is reused for each row below
     for index, row in specs.iterrows():
         print("\n------------------------------------------\n")
@@ -132,9 +135,9 @@ def upload_videos():
 
         try:
 
-            panopto.upload_folder(local_folder_path, panopto_folder_id)
-            cprint("UPLOAD COMPLETED\n", "green")
-            uploaded += 1
+            upload_id = panopto.upload_folder(local_folder_path, panopto_folder_id)
+            uploads[upload_id] = video_title
+            cprint("UPLOAD COMPLETED (Panopto is processing it)\n", "green")
             cprint(f"   video: {video_title}", "blue")
             cprint(f"   src folder: {local_folder_path}", "blue")
             cprint(f"   destination (panopto): {panopto_folder_name}", "blue")
@@ -152,8 +155,47 @@ def upload_videos():
             send_notification(f" ERROR Upload failed for {video_title}: {err}", "ERROR")
             continue
 
-    logging.info("Completed uploads: %i of %i", uploaded, requested)
-    return uploaded, requested
+    processed = __wait_for_panopto(panopto, uploads)
+    logging.info("Processed in Panopto: %i of %i", processed, requested)
+    return processed, requested
+
+
+def __wait_for_panopto(panopto, uploads):
+    """
+    Wait for Panopto to finish processing the uploads ({upload_id: title}).
+    Notifies about any that fail or are still processing at the time limit.
+    Returns how many finished processing.
+    """
+    if not uploads:
+        return 0
+
+    timeout_minutes = int(os.getenv("PROCESSING_TIMEOUT_MINUTES", DEFAULT_PROCESSING_TIMEOUT_MINUTES))
+    cprint(
+        f"\nWaiting for Panopto to process {len(uploads)} video(s) (up to {timeout_minutes} minutes)...",
+        "yellow",
+    )
+    states = panopto.wait_for_processing(list(uploads), timeout_minutes * 60)
+
+    processed = 0
+    for upload_id, title in uploads.items():
+        state = states[upload_id]
+        if state == COMPLETE:
+            processed += 1
+            cprint(f"   Ready in Panopto: {title}", "green")
+            logging.info("Ready in Panopto: %s (upload %s)", title, upload_id)
+        elif state in (PROCESSING, UPLOAD_COMPLETED, None):
+            send_notification(
+                f" ERROR {title} is still not processed after {timeout_minutes} minutes."
+                f" Check it in Panopto (upload {upload_id}).",
+                "ERROR",
+            )
+        else:
+            send_notification(
+                f" ERROR Panopto could not process {title} (state {state}, upload {upload_id})."
+                f" The session will show no content.",
+                "ERROR",
+            )
+    return processed
 
 
 

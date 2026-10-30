@@ -118,17 +118,17 @@ def __run():
         uploaded, requested = upload_videos()
 
         if uploaded == requested:
-            cprint(f"\nBranding COMPLETED: {uploaded} of {requested} videos uploaded", "green")
-            send_notification(f" INFO Branding completed: {uploaded} of {requested} videos uploaded", "INFO")
+            cprint(f"\nBranding COMPLETED: {uploaded} of {requested} videos ready in Panopto", "green")
+            send_notification(f" INFO Branding completed: {uploaded} of {requested} videos ready in Panopto", "INFO")
         else:
             cprint(
-                f"\nBranding FINISHED WITH ERRORS: {uploaded} of {requested} videos uploaded."
+                f"\nBranding FINISHED WITH ERRORS: {uploaded} of {requested} videos ready in Panopto."
                 f" See logs/{now_formatted}.log",
                 "red",
                 attrs=["bold"],
             )
             send_notification(
-                f" ERROR Branding finished with errors: {uploaded} of {requested} videos uploaded."
+                f" ERROR Branding finished with errors: {uploaded} of {requested} videos ready in Panopto."
                 f" See logs/{now_formatted}.log",
                 "ERROR",
             )

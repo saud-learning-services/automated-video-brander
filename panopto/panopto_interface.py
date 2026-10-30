@@ -219,6 +219,45 @@ class Panopto:
         # step 5 - monitor the progress of processing
         self.__monitor_progress(upload_id)
 
+        return upload_id
+
+    def get_upload_state(self, upload_id):
+        """
+        Current sessionUpload "State" of an upload (see the constants at the top)
+        """
+        url = "https://{0}/Panopto/PublicAPI/REST/sessionUpload/{1}".format(
+            self.server, upload_id
+        )
+        return self.__request("GET", url).json()["State"]
+
+    def wait_for_processing(self, upload_ids, timeout_seconds, poll_seconds=30):
+        """
+        Poll uploads until Panopto has finished processing each one (COMPLETE)
+        or reports a failure, or until timeout_seconds has passed.
+        Returns {upload_id: last state seen}; a failed status check is reported as None.
+        """
+        states = {upload_id: None for upload_id in upload_ids}
+        pending = set(upload_ids)
+        deadline = time.time() + timeout_seconds
+
+        while pending:
+            for upload_id in list(pending):
+                try:
+                    state = self.get_upload_state(upload_id)
+                except Exception as err:
+                    logging.warning("Could not check upload %s: %s", upload_id, err)
+                    continue
+                states[upload_id] = state
+                if state == COMPLETE or state in (UPLOAD_CANCELLED, PROCESSING_ERROR) or state > COMPLETE:
+                    pending.discard(upload_id)
+
+            if not pending or time.time() >= deadline:
+                break
+            print(f"  {len(pending)} video(s) still processing in Panopto...")
+            time.sleep(poll_seconds)
+
+        return states
+
     def __enumerate_files(self, folder):
         """
         Return the list of files in the specified folder. Not to traverse sub folders.
